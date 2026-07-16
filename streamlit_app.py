@@ -250,6 +250,37 @@ st.markdown(f"""
         font-size: 0.78rem;
         padding-top: 18px;
     }}
+
+    /* ---- sidebar nav (dibuat dari st.radio, disamarkan jadi menu klik) ---- */
+    section[data-testid="stSidebar"] div[role="radiogroup"] {{
+        gap: 4px;
+        margin-bottom: 4px;
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] label {{
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: {INK_SOFT};
+        cursor: pointer;
+        transition: background 0.12s ease;
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
+        background: {RED_SOFT};
+        color: {RED_DARK};
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
+        background: {RED};
+        color: white;
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {{
+        display: none;
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{
+        font-size: 0.9rem;
+        font-weight: 600;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -266,18 +297,19 @@ with st.sidebar:
             </div>
         </div>
     """, unsafe_allow_html=True)
-    st.markdown(f"""
-        <div style="padding:10px 12px;background:{RED};border-radius:8px;
-                    color:white;font-weight:700;font-size:0.9rem;margin-bottom:8px;">
-            {icon_svg("grid", "#FFFFFF")} &nbsp; Dashboard
-        </div>
-        <div style="padding:10px 12px;color:{INK_SOFT};font-weight:600;font-size:0.9rem;">
-            {icon_svg("bars", INK_SOFT)} &nbsp; Principal
-        </div>
-        <div style="padding:10px 12px;color:{INK_SOFT};font-weight:600;font-size:0.9rem;">
-            {icon_svg("coin", INK_SOFT)} &nbsp; Pembayaran
-        </div>
-    """, unsafe_allow_html=True)
+
+    nav_options = ["Dashboard", "Principal", "Pembayaran"]
+    nav_labels = {
+        "Dashboard": "▦  Dashboard",
+        "Principal": "▤  Principal",
+        "Pembayaran": "●  Pembayaran",
+    }
+    halaman = st.radio(
+        "Menu", nav_options,
+        format_func=lambda x: nav_labels[x],
+        key="nav_page",
+        label_visibility="collapsed",
+    )
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown('<div class="card-title" style="font-size:0.85rem;">Filter</div>', unsafe_allow_html=True)
 
@@ -374,43 +406,14 @@ df_f = df[df["principal"].isin(pilih_principal) & df["status"].isin(pilih_status
 if cari_invoice:
     df_f = df_f[df_f["no_invoice"].astype(str).str.contains(cari_invoice, case=False, na=False)]
 
-# ── Heading ──────────────────────────────────────
-st.markdown('<div class="page-title">Payment Monitoring Overview</div>', unsafe_allow_html=True)
-st.markdown('<div class="page-subtitle">Status pembayaran invoice principal secara real-time.</div>', unsafe_allow_html=True)
-
-# ── KPI cards ────────────────────────────────────
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Invoice", fmt_num(len(df_f)))
-col2.metric("Lunas", fmt_num((df_f['status']=='LUNAS').sum()))
-col3.metric("Belum Lunas", fmt_num((df_f['status']=='BELUM LUNAS').sum()))
-total_belum_rp = df_f.loc[df_f["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
-col4.metric("Nominal Belum Lunas", fmt_rupiah_short(total_belum_rp), help=fmt_rupiah(total_belum_rp))
-
-# invoice jatuh tempo / lewat jatuh tempo tapi belum lunas
+# ── Data umum (dipakai di semua halaman) ────────
 today = pd.Timestamp(date.today())
+kolom_tampil = [
+    "principal", "no_invoice", "no_payment_advice", "nominal_invoice",
+    "no_miro", "tanggal_jatuh_tempo", "tanggal_bayar", "status",
+    "sumber_file", "sumber_sheet",
+]
 overdue = df_f[(df_f["status"] == "BELUM LUNAS") & (df_f["tanggal_jatuh_tempo"] < today)]
-if len(overdue):
-    st.markdown(
-        f'<div class="notice-box">{icon_svg("warn", RED_DARK)} {fmt_num(len(overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
-        f'dibayar (total {fmt_rupiah(overdue["nominal_invoice"].sum())})</div>',
-        unsafe_allow_html=True,
-    )
-    kolom_overdue = [
-        "principal", "no_invoice", "no_payment_advice", "nominal_invoice",
-        "no_miro", "tanggal_jatuh_tempo", "tanggal_bayar", "status",
-        "sumber_file", "sumber_sheet",
-    ]
-    st.download_button(
-        "↓  Unduh Daftar Invoice Lewat Jatuh Tempo (CSV)",
-        overdue[kolom_overdue].sort_values("tanggal_jatuh_tempo").to_csv(index=False, sep=";").encode("utf-8-sig"),
-        file_name=f"invoice_lewat_jatuh_tempo_{today.date()}.csv",
-        mime="text/csv",
-        key="download_overdue",
-    )
-
-st.write("")
-
-# ── Grafik: tren + aging summary (mirip referensi) ──
 
 def styled_fig(fig, height=320):
     fig.update_layout(
@@ -425,13 +428,223 @@ def styled_fig(fig, height=320):
     fig.update_yaxes(gridcolor=LINE, zerolinecolor=LINE)
     return fig
 
-c1, c2 = st.columns([1.6, 1])
+def hitung_summary_principal(data):
+    summary = (
+        data.groupby("principal")
+        .apply(lambda g: pd.Series({
+            "Total Nominal": g["nominal_invoice"].sum(),
+            "Nominal Belum Lunas": g.loc[g["status"] == "BELUM LUNAS", "nominal_invoice"].sum(),
+            "Jumlah Invoice": len(g),
+            "Jumlah Lunas": (g["status"] == "LUNAS").sum(),
+            "Jumlah Belum Lunas": (g["status"] == "BELUM LUNAS").sum(),
+        }))
+        .reset_index()
+        .sort_values("Nominal Belum Lunas", ascending=False)
+    )
 
-with c1:
+    def risk_level(row):
+        if row["Nominal Belum Lunas"] == 0:
+            return "LOW"
+        ratio = row["Nominal Belum Lunas"] / row["Total Nominal"] if row["Total Nominal"] else 0
+        if ratio > 0.5:
+            return "CRITICAL"
+        if ratio > 0.25:
+            return "HIGH"
+        if ratio > 0.1:
+            return "MEDIUM"
+        return "LOW"
+
+    summary["Risk"] = summary.apply(risk_level, axis=1)
+    return summary
+
+risk_colors = {
+    "LOW": (GREEN, GREEN_SOFT),
+    "MEDIUM": (AMBER, AMBER_SOFT),
+    "HIGH": (RED_DARK, RED_SOFT),
+    "CRITICAL": ("#FFFFFF", RED),
+}
+
+def render_tabel_principal(summary, judul="Ringkasan per Principal", sub="Total saldo dan status keterlambatan tiap principal"):
+    st.markdown(f"""
+        <div class="card">
+            <div class="card-title">{judul}</div>
+            <div class="card-subtitle">{sub}</div>
+    """, unsafe_allow_html=True)
+
+    header_cols = st.columns([2.0, 1.5, 1.5, 1.1, 1.1, 1])
+    for c, h in zip(header_cols, ["PRINCIPAL", "TOTAL NOMINAL", "NOMINAL BELUM LUNAS", "LUNAS", "BELUM LUNAS", "RISK"]):
+        c.markdown(f"<span style='color:{INK_SOFT};font-size:0.72rem;font-weight:700;letter-spacing:0.03em;'>{h}</span>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:6px 0 4px 0;'>", unsafe_allow_html=True)
+
+    for _, row in summary.iterrows():
+        fg, bg = risk_colors[row["Risk"]]
+        rc = st.columns([2.0, 1.5, 1.5, 1.1, 1.1, 1])
+        rc[0].markdown(f"**{row['principal']}**")
+        rc[1].markdown(fmt_rupiah(row['Total Nominal']))
+        color_amt = RED_DARK if row["Nominal Belum Lunas"] > 0 else INK
+        rc[2].markdown(f"<span style='color:{color_amt};font-weight:700;'>{fmt_rupiah(row['Nominal Belum Lunas'])}</span>", unsafe_allow_html=True)
+        rc[3].markdown(f"<span style='color:{GREEN};font-weight:700;'>{fmt_num(int(row['Jumlah Lunas']))}</span>", unsafe_allow_html=True)
+        rc[4].markdown(f"<span style='color:{RED_DARK};font-weight:700;'>{fmt_num(int(row['Jumlah Belum Lunas']))}</span>", unsafe_allow_html=True)
+        rc[5].markdown(f"<span class='badge' style='background:{bg};color:{fg};'>{row['Risk']}</span>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+def render_overdue_notice(data_overdue, key_suffix=""):
+    if len(data_overdue):
+        st.markdown(
+            f'<div class="notice-box">{icon_svg("warn", RED_DARK)} {fmt_num(len(data_overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
+            f'dibayar (total {fmt_rupiah(data_overdue["nominal_invoice"].sum())})</div>',
+            unsafe_allow_html=True,
+        )
+        st.download_button(
+            "↓  Unduh Daftar Invoice Lewat Jatuh Tempo (CSV)",
+            data_overdue[kolom_tampil].sort_values("tanggal_jatuh_tempo").to_csv(index=False, sep=";").encode("utf-8-sig"),
+            file_name=f"invoice_lewat_jatuh_tempo_{today.date()}.csv",
+            mime="text/csv",
+            key=f"download_overdue{key_suffix}",
+        )
+
+# ── Judul per halaman ────────────────────────────
+judul_halaman = {
+    "Dashboard": ("Payment Monitoring Overview", "Status pembayaran invoice principal secara real-time."),
+    "Principal": ("Ringkasan per Principal", "Perbandingan saldo, risiko, dan status keterlambatan SIMBA, NSI, dan MEIJI."),
+    "Pembayaran": ("Detail Pembayaran", "Rincian transaksi, tren pembayaran, dan status lunas / belum lunas per invoice."),
+}
+judul, subjudul = judul_halaman[halaman]
+st.markdown(f'<div class="page-title">{judul}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="page-subtitle">{subjudul}</div>', unsafe_allow_html=True)
+
+# ── KPI cards (tampil di semua halaman) ──────────
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total Invoice", fmt_num(len(df_f)))
+col2.metric("Lunas", fmt_num((df_f['status']=='LUNAS').sum()))
+col3.metric("Belum Lunas", fmt_num((df_f['status']=='BELUM LUNAS').sum()))
+total_belum_rp = df_f.loc[df_f["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
+col4.metric("Nominal Belum Lunas", fmt_rupiah_short(total_belum_rp), help=fmt_rupiah(total_belum_rp))
+
+# =========================================================
+# HALAMAN: DASHBOARD -- ringkasan umum semua principal
+# =========================================================
+if halaman == "Dashboard":
+    render_overdue_notice(overdue, key_suffix="_dash")
+    st.write("")
+
+    c1, c2 = st.columns([1.6, 1])
+    with c1:
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Tren Pembayaran</div>
+                <div class="card-subtitle">Nominal invoice yang dibayar per bulan</div>
+        """, unsafe_allow_html=True)
+        lunas = df_f[(df_f["status"] == "LUNAS") & df_f["tanggal_bayar"].notna()].copy()
+        if not lunas.empty:
+            lunas["bulan_bayar"] = lunas["tanggal_bayar"].dt.to_period("M").astype(str)
+            tren_bayar = lunas.groupby("bulan_bayar")["nominal_invoice"].sum().sort_index()
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=tren_bayar.index, y=tren_bayar.values,
+                mode="lines+markers", name="Pembayaran",
+                line=dict(color=RED, width=3, shape="spline"),
+                marker=dict(color=RED, size=7),
+                fill="tozeroy", fillcolor="rgba(200,30,44,0.06)",
+            ))
+            st.plotly_chart(styled_fig(fig), use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.info("Belum ada data pembayaran untuk ditampilkan.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Ringkasan Aging</div>
+                <div class="card-subtitle">Sebaran saldo belum lunas berdasarkan umur</div>
+        """, unsafe_allow_html=True)
+        belum = df_f[df_f["status"] == "BELUM LUNAS"].copy()
+        if not belum.empty:
+            belum["hari_lewat"] = (today - belum["tanggal_jatuh_tempo"]).dt.days
+            buckets = [
+                ("Belum Jatuh Tempo", belum["hari_lewat"] < 0, INK_SOFT),
+                ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F3B4B9"),
+                ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E8828B"),
+                ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#D64B57"),
+                ("90+ Hari", belum["hari_lewat"] > 90, RED),
+            ]
+            max_val = max(belum.loc[cond, "nominal_invoice"].sum() for _, cond, _ in buckets) or 1
+            for label, cond, color in buckets:
+                val = belum.loc[cond, "nominal_invoice"].sum()
+                pct = max(3, (val / max_val) * 100)
+                st.markdown(f"""
+                    <div class="aging-row">
+                        <div class="aging-label-row">
+                            <span>{label}</span>
+                            <b>{fmt_rupiah(val)}</b>
+                        </div>
+                        <div class="aging-bar-bg">
+                            <div class="aging-bar-fill" style="width:{pct}%;background:{color};"></div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Tidak ada invoice belum lunas.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.write("")
+    render_tabel_principal(hitung_summary_principal(df_f))
+
+# =========================================================
+# HALAMAN: PRINCIPAL -- fokus perbandingan & drill-down tiap principal
+# =========================================================
+elif halaman == "Principal":
+    render_tabel_principal(hitung_summary_principal(df_f))
+    st.write("")
+
+    st.markdown('<div class="card-title" style="margin-bottom:8px;">Lihat Detail 1 Principal</div>', unsafe_allow_html=True)
+    daftar_principal = ["Semua Principal"] + sorted(df_f["principal"].dropna().unique().tolist())
+    pilih_satu = st.selectbox("Pilih Principal", daftar_principal, label_visibility="collapsed")
+
+    if pilih_satu != "Semua Principal":
+        df_p = df_f[df_f["principal"] == pilih_satu]
+        overdue_p = df_p[(df_p["status"] == "BELUM LUNAS") & (df_p["tanggal_jatuh_tempo"] < today)]
+
+        pcol1, pcol2, pcol3, pcol4 = st.columns(4)
+        pcol1.metric("Total Invoice", fmt_num(len(df_p)))
+        pcol2.metric("Lunas", fmt_num((df_p['status']=='LUNAS').sum()))
+        pcol3.metric("Belum Lunas", fmt_num((df_p['status']=='BELUM LUNAS').sum()))
+        pcol4.metric("Nominal Belum Lunas", fmt_rupiah_short(df_p.loc[df_p["status"]=="BELUM LUNAS","nominal_invoice"].sum()))
+
+        render_overdue_notice(overdue_p, key_suffix=f"_principal_{pilih_satu}")
+
+        st.write("")
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Daftar Invoice -- {pilih_satu}</div>
+                <div class="card-subtitle">Seluruh invoice principal ini sesuai filter aktif</div>
+        """, unsafe_allow_html=True)
+        st.dataframe(
+            df_p[kolom_tampil].sort_values("tanggal_jatuh_tempo", ascending=False),
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.download_button(
+            f"↓  Unduh Data {pilih_satu} (CSV)",
+            df_p[kolom_tampil].to_csv(index=False, sep=";").encode("utf-8-sig"),
+            file_name=f"monitoring_pembayaran_{pilih_satu.lower()}.csv",
+            mime="text/csv",
+            key=f"download_principal_{pilih_satu}",
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# HALAMAN: PEMBAYARAN -- fokus tren, status, & detail transaksi
+# =========================================================
+elif halaman == "Pembayaran":
+    render_overdue_notice(overdue, key_suffix="_bayar")
+    st.write("")
+
     st.markdown(f"""
         <div class="card">
             <div class="card-title">Tren Pembayaran</div>
-            <div class="card-subtitle">Nominal invoice yang dibayar per bulan</div>
+            <div class="card-subtitle">Nominal invoice yang dibayar per bulan (seluruh principal sesuai filter)</div>
     """, unsafe_allow_html=True)
     lunas = df_f[(df_f["status"] == "LUNAS") & df_f["tanggal_bayar"].notna()].copy()
     if not lunas.empty:
@@ -450,127 +663,61 @@ with c1:
         st.info("Belum ada data pembayaran untuk ditampilkan.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-with c2:
+    st.write("")
+
+    # ── Status lunas vs belum lunas per sumber file ──
     st.markdown(f"""
         <div class="card">
-            <div class="card-title">Ringkasan Aging</div>
-            <div class="card-subtitle">Sebaran saldo belum lunas berdasarkan umur</div>
+            <div class="card-title">Status per Sumber File</div>
+            <div class="card-subtitle">Jumlah & nominal LUNAS vs BELUM LUNAS tiap sumber data</div>
     """, unsafe_allow_html=True)
-
-    belum = df_f[df_f["status"] == "BELUM LUNAS"].copy()
-    if not belum.empty:
-        belum["hari_lewat"] = (today - belum["tanggal_jatuh_tempo"]).dt.days
-        buckets = [
-            ("Belum Jatuh Tempo", belum["hari_lewat"] < 0, INK_SOFT),
-            ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F3B4B9"),
-            ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E8828B"),
-            ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#D64B57"),
-            ("90+ Hari", belum["hari_lewat"] > 90, RED),
-        ]
-        max_val = max(belum.loc[cond, "nominal_invoice"].sum() for _, cond, _ in buckets) or 1
-        for label, cond, color in buckets:
-            val = belum.loc[cond, "nominal_invoice"].sum()
-            pct = max(3, (val / max_val) * 100)
-            st.markdown(f"""
-                <div class="aging-row">
-                    <div class="aging-label-row">
-                        <span>{label}</span>
-                        <b>{fmt_rupiah(val)}</b>
-                    </div>
-                    <div class="aging-bar-bg">
-                        <div class="aging-bar-fill" style="width:{pct}%;background:{color};"></div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+    status_sumber = (
+        df_f.groupby("sumber_file")
+        .apply(lambda g: pd.Series({
+            "Lunas": (g["status"] == "LUNAS").sum(),
+            "Belum Lunas": (g["status"] == "BELUM LUNAS").sum(),
+            "Nominal Lunas": g.loc[g["status"] == "LUNAS", "nominal_invoice"].sum(),
+            "Nominal Belum Lunas": g.loc[g["status"] == "BELUM LUNAS", "nominal_invoice"].sum(),
+        }))
+        .reset_index()
+    )
+    if not status_sumber.empty:
+        hcols = st.columns([2, 1, 1, 1.5, 1.5])
+        for c, h in zip(hcols, ["SUMBER FILE", "LUNAS", "BELUM LUNAS", "NOMINAL LUNAS", "NOMINAL BELUM LUNAS"]):
+            c.markdown(f"<span style='color:{INK_SOFT};font-size:0.72rem;font-weight:700;letter-spacing:0.03em;'>{h}</span>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:6px 0 4px 0;'>", unsafe_allow_html=True)
+        for _, row in status_sumber.iterrows():
+            rc = st.columns([2, 1, 1, 1.5, 1.5])
+            rc[0].markdown(f"**{row['sumber_file']}**")
+            rc[1].markdown(f"<span style='color:{GREEN};font-weight:700;'>{fmt_num(int(row['Lunas']))}</span>", unsafe_allow_html=True)
+            rc[2].markdown(f"<span style='color:{RED_DARK};font-weight:700;'>{fmt_num(int(row['Belum Lunas']))}</span>", unsafe_allow_html=True)
+            rc[3].markdown(fmt_rupiah(row['Nominal Lunas']))
+            rc[4].markdown(fmt_rupiah(row['Nominal Belum Lunas']))
     else:
-        st.info("Tidak ada invoice belum lunas.")
+        st.info("Tidak ada data.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.write("")
+    st.write("")
 
-# ── Ringkasan per Principal (mirip "Top Distributor Aging") ──
-st.markdown(f"""
-    <div class="card">
-        <div class="card-title">Ringkasan per Principal</div>
-        <div class="card-subtitle">Total saldo dan status keterlambatan tiap principal</div>
-""", unsafe_allow_html=True)
-
-summary = (
-    df_f.groupby("principal")
-    .apply(lambda g: pd.Series({
-        "Total Nominal": g["nominal_invoice"].sum(),
-        "Nominal Belum Lunas": g.loc[g["status"] == "BELUM LUNAS", "nominal_invoice"].sum(),
-        "Jumlah Belum Lunas": (g["status"] == "BELUM LUNAS").sum(),
-    }))
-    .reset_index()
-    .sort_values("Nominal Belum Lunas", ascending=False)
-)
-
-def risk_level(row):
-    if row["Nominal Belum Lunas"] == 0:
-        return "LOW"
-    ratio = row["Nominal Belum Lunas"] / row["Total Nominal"] if row["Total Nominal"] else 0
-    if ratio > 0.5:
-        return "CRITICAL"
-    if ratio > 0.25:
-        return "HIGH"
-    if ratio > 0.1:
-        return "MEDIUM"
-    return "LOW"
-
-risk_colors = {
-    "LOW": (GREEN, GREEN_SOFT),
-    "MEDIUM": (AMBER, AMBER_SOFT),
-    "HIGH": (RED_DARK, RED_SOFT),
-    "CRITICAL": ("#FFFFFF", RED),
-}
-
-summary["Risk"] = summary.apply(risk_level, axis=1)
-
-header_cols = st.columns([2.2, 1.6, 1.6, 1.2, 1])
-for c, h in zip(header_cols, ["PRINCIPAL", "TOTAL NOMINAL", "NOMINAL BELUM LUNAS", "JML BELUM LUNAS", "RISK"]):
-    c.markdown(f"<span style='color:{INK_SOFT};font-size:0.72rem;font-weight:700;letter-spacing:0.03em;'>{h}</span>", unsafe_allow_html=True)
-st.markdown(f"<hr style='margin:6px 0 4px 0;'>", unsafe_allow_html=True)
-
-for _, row in summary.iterrows():
-    fg, bg = risk_colors[row["Risk"]]
-    rc = st.columns([2.2, 1.6, 1.6, 1.2, 1])
-    rc[0].markdown(f"**{row['principal']}**")
-    rc[1].markdown(fmt_rupiah(row['Total Nominal']))
-    color_amt = RED_DARK if row["Nominal Belum Lunas"] > 0 else INK
-    rc[2].markdown(f"<span style='color:{color_amt};font-weight:700;'>{fmt_rupiah(row['Nominal Belum Lunas'])}</span>", unsafe_allow_html=True)
-    rc[3].markdown(fmt_num(int(row['Jumlah Belum Lunas'])))
-    rc[4].markdown(f"<span class='badge' style='background:{bg};color:{fg};'>{row['Risk']}</span>", unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-st.write("")
-
-# ── Tabel detail ────────────────────────────────
-st.markdown(f"""
-    <div class="card">
-        <div class="card-title">Detail Data</div>
-        <div class="card-subtitle">Rincian seluruh invoice sesuai filter</div>
-""", unsafe_allow_html=True)
-
-kolom_tampil = [
-    "principal", "no_invoice", "no_payment_advice", "nominal_invoice",
-    "no_miro", "tanggal_jatuh_tempo", "tanggal_bayar", "status",
-    "sumber_file", "sumber_sheet",
-]
-st.dataframe(
-    df_f[kolom_tampil].sort_values("tanggal_jatuh_tempo", ascending=False),
-    use_container_width=True,
-    hide_index=True,
-)
-
-st.download_button(
-    "↓  Unduh Hasil Filter (CSV)",
-    df_f[kolom_tampil].to_csv(index=False, sep=";").encode("utf-8-sig"),
-    file_name="monitoring_pembayaran_filtered.csv",
-    mime="text/csv",
-)
-st.markdown("</div>", unsafe_allow_html=True)
+    # ── Tabel detail transaksi ──
+    st.markdown(f"""
+        <div class="card">
+            <div class="card-title">Detail Transaksi</div>
+            <div class="card-subtitle">Rincian seluruh invoice sesuai filter</div>
+    """, unsafe_allow_html=True)
+    st.dataframe(
+        df_f[kolom_tampil].sort_values("tanggal_jatuh_tempo", ascending=False),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.download_button(
+        "↓  Unduh Hasil Filter (CSV)",
+        df_f[kolom_tampil].to_csv(index=False, sep=";").encode("utf-8-sig"),
+        file_name="monitoring_pembayaran_filtered.csv",
+        mime="text/csv",
+        key="download_pembayaran_detail",
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
     '<div class="footer-note">Data otomatis dari Supabase &middot; jalankan upload_to_supabase.py '
