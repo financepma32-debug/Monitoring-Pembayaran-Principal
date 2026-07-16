@@ -30,29 +30,65 @@ AMBER_SOFT= "#FEF3E2"
 
 # =========================================================
 # IKON KUSTOM (SVG, bukan emoji) -- dipakai di sidebar, notice box,
-# dan tombol download supaya tampilan konsisten & tidak bergantung
-# pada font emoji bawaan OS/browser.
+# judul halaman, dan tombol download supaya tampilan konsisten &
+# tidak bergantung pada font emoji bawaan OS/browser.
+# Semua ikon digambar sendiri dengan gaya garis (outline) yang
+# seragam: stroke 1.8, ujung & sambungan membulat.
 # =========================================================
-def icon_svg(name, color="currentColor", size=15):
-    paths = {
-        # kotak grid 2x2 -> "Dashboard"
-        "grid": '<rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
-        # tiga batang naik -> "Principal"
-        "bars": '<rect x="1" y="9" width="3.2" height="6" rx="0.6"/><rect x="6.4" y="5" width="3.2" height="10" rx="0.6"/><rect x="11.8" y="1" width="3.2" height="14" rx="0.6"/>',
-        # lingkaran + garis tengah -> "Pembayaran"
-        "coin": '<circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="4.3" x2="8" y2="11.7" stroke="currentColor" stroke-width="1.6"/>',
-        # segitiga peringatan + seru -> pengganti "⚠"
-        "warn": '<path d="M8 1.4 L15 14.6 H1 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><line x1="8" y1="6.2" x2="8" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12.3" r="0.9"/>',
-        # panah ke bawah menuju garis -> pengganti "⬇"
-        "download": '<line x1="8" y1="1.5" x2="8" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.2 7 L8 11 L11.8 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+def icon_svg(name, color="currentColor", size=16):
+    common = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
+    bodies = {
+        # 4 kotak membulat tersusun rapi -> "Dashboard"
+        "grid": f'''
+            <rect x="3" y="3" width="7.5" height="7.5" rx="2" {common}/>
+            <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" {common}/>
+            <rect x="3" y="13.5" width="7.5" height="7.5" rx="2" {common}/>
+            <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" {common}/>
+        ''',
+        # tiga batang naik dengan titik tren -> "Principal"
+        "bars": f'''
+            <rect x="3" y="13" width="4" height="8" rx="1.2" fill="currentColor" stroke="none"/>
+            <rect x="10" y="8.5" width="4" height="12.5" rx="1.2" fill="currentColor" stroke="none"/>
+            <rect x="17" y="3.5" width="4" height="17.5" rx="1.2" fill="currentColor" stroke="none"/>
+            <path d="M3 9.5 L9.5 5 L14.5 7.5 L21 2" {common}/>
+        ''',
+        # koin bergaris tepi + simbol nilai -> "Pembayaran"
+        "coin": f'''
+            <circle cx="12" cy="12" r="9" {common}/>
+            <circle cx="12" cy="12" r="4.6" {common}/>
+            <line x1="12" y1="3" x2="12" y2="5.4" {common}/>
+            <line x1="12" y1="18.6" x2="12" y2="21" {common}/>
+        ''',
+        # segitiga peringatan membulat + seru -> pengganti "⚠"
+        "warn": f'''
+            <path d="M12 3.2 L21 19.6 A1.6 1.6 0 0 1 19.6 22 H4.4 A1.6 1.6 0 0 1 3 19.6 Z" {common}/>
+            <line x1="12" y1="9.6" x2="12" y2="14.6" {common}/>
+            <circle cx="12" cy="17.6" r="1" fill="currentColor" stroke="none"/>
+        ''',
+        # panah turun menuju baki -> pengganti "⬇"
+        "download": f'''
+            <line x1="12" y1="3" x2="12" y2="14.5" {common}/>
+            <path d="M7 10 L12 15 L17 10" {common}/>
+            <path d="M4 18 v1.6 a1.4 1.4 0 0 0 1.4 1.4 h13.2 a1.4 1.4 0 0 0 1.4 -1.4 V18" {common}/>
+        ''',
     }
-    fill = "none" if name in ("warn", "download") else color
-    extra_fill = f'fill="{color}"' if name in ("grid", "bars") else ""
     return (
-        f'<svg width="{size}" height="{size}" viewBox="0 0 16 16" '
-        f'xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px;color:{color};" {extra_fill}>'
-        f'{paths[name]}</svg>'
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" '
+        f'xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px;color:{color};">'
+        f'{bodies[name]}</svg>'
     )
+
+def icon_badge(name, fg, bg, size=34, icon_size=16, radius=None):
+    """Bungkus ikon dalam lingkaran/kotak membulat berwarna -- biar terasa
+    seperti ikon buatan sendiri yang matang, bukan garis polos mengambang."""
+    radius = size / 2.6 if radius is None else radius
+    return (
+        f'<span style="display:inline-flex;align-items:center;justify-content:center;'
+        f'width:{size}px;height:{size}px;min-width:{size}px;border-radius:{radius}px;'
+        f'background:{bg};color:{fg};flex-shrink:0;">'
+        f'{icon_svg(name, fg, icon_size)}</span>'
+    )
+
 
 st.markdown(f"""
 <style>
@@ -190,11 +226,14 @@ st.markdown(f"""
 
     /* ---- notice ---- */
     .notice-box {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
         border: 1px solid #F3C6C6;
         background-color: {RED_SOFT};
         color: {RED_DARK};
         border-radius: 8px;
-        padding: 12px 16px;
+        padding: 10px 16px;
         margin: 4px 0 20px 0;
         font-size: 0.9rem;
         font-weight: 600;
@@ -300,8 +339,8 @@ with st.sidebar:
 
     nav_options = ["Dashboard", "Principal", "Pembayaran"]
     nav_labels = {
-        "Dashboard": "▦  Dashboard",
-        "Principal": "▤  Principal",
+        "Dashboard": "◆  Dashboard",
+        "Principal": "▲  Principal",
         "Pembayaran": "●  Pembayaran",
     }
     halaman = st.radio(
@@ -391,7 +430,7 @@ df = load_data()
 
 if df.empty:
     st.markdown('<div class="page-title">Payment Monitoring Overview</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="notice-box">{icon_svg("warn", RED_DARK)} Belum ada data di Supabase. Jalankan upload_to_supabase.py dulu di komputer kamu.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="notice-box">{icon_badge("warn", RED, "#FFFFFF", size=30, icon_size=15)}<span>Belum ada data di Supabase. Jalankan upload_to_supabase.py dulu di komputer kamu.</span></div>', unsafe_allow_html=True)
     st.stop()
 
 # ── Sidebar filter (isi setelah data ada) ───────
@@ -492,8 +531,9 @@ def render_tabel_principal(summary, judul="Ringkasan per Principal", sub="Total 
 def render_overdue_notice(data_overdue, key_suffix=""):
     if len(data_overdue):
         st.markdown(
-            f'<div class="notice-box">{icon_svg("warn", RED_DARK)} {fmt_num(len(data_overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
-            f'dibayar (total {fmt_rupiah(data_overdue["nominal_invoice"].sum())})</div>',
+            f'<div class="notice-box">{icon_badge("warn", RED, "#FFFFFF", size=30, icon_size=15)}'
+            f'<span>{fmt_num(len(data_overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
+            f'dibayar (total {fmt_rupiah(data_overdue["nominal_invoice"].sum())})</span></div>',
             unsafe_allow_html=True,
         )
         st.download_button(
@@ -506,12 +546,19 @@ def render_overdue_notice(data_overdue, key_suffix=""):
 
 # ── Judul per halaman ────────────────────────────
 judul_halaman = {
-    "Dashboard": ("Payment Monitoring Overview", "Status pembayaran invoice principal secara real-time."),
-    "Principal": ("Ringkasan per Principal", "Perbandingan saldo, risiko, dan status keterlambatan SIMBA, NSI, dan MEIJI."),
-    "Pembayaran": ("Detail Pembayaran", "Rincian transaksi, tren pembayaran, dan status lunas / belum lunas per invoice."),
+    "Dashboard": ("grid", "Payment Monitoring Overview", "Status pembayaran invoice principal secara real-time."),
+    "Principal": ("bars", "Ringkasan per Principal", "Perbandingan saldo, risiko, dan status keterlambatan SIMBA, NSI, dan MEIJI."),
+    "Pembayaran": ("coin", "Detail Pembayaran", "Rincian transaksi, tren pembayaran, dan status lunas / belum lunas per invoice."),
 }
-judul, subjudul = judul_halaman[halaman]
-st.markdown(f'<div class="page-title">{judul}</div>', unsafe_allow_html=True)
+ikon_halaman, judul, subjudul = judul_halaman[halaman]
+st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:2px;">
+        {icon_badge(ikon_halaman, "#FFFFFF", RED, size=40, icon_size=19, radius=11)}
+        <div>
+            <div class="page-title" style="margin-bottom:0;">{judul}</div>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 st.markdown(f'<div class="page-subtitle">{subjudul}</div>', unsafe_allow_html=True)
 
 # ── KPI cards (tampil di semua halaman) ──────────
