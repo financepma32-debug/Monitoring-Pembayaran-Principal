@@ -251,9 +251,6 @@ with st.sidebar:
         <div style="padding:10px 12px;color:{INK_SOFT};font-weight:600;font-size:0.9rem;">
             💰 &nbsp; Pembayaran
         </div>
-        <div style="padding:10px 12px;color:{INK_SOFT};font-weight:600;font-size:0.9rem;">
-            📄 &nbsp; Laporan Aging
-        </div>
     """, unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown('<div class="card-title" style="font-size:0.85rem;">Filter</div>', unsafe_allow_html=True)
@@ -295,6 +292,32 @@ def load_data():
     df["nominal_invoice"] = pd.to_numeric(df["nominal_invoice"], errors="coerce")
     return df
 
+def fmt_num(n):
+    """Format angka dengan titik sebagai pemisah ribuan (gaya Indonesia)."""
+    try:
+        return f"{n:,.0f}".replace(",", ".")
+    except (ValueError, TypeError):
+        return str(n)
+
+def fmt_rupiah(n):
+    """Rp dengan titik ribuan, tanpa disingkat. Contoh: Rp 14.300.000"""
+    return f"Rp {fmt_num(n)}"
+
+def fmt_rupiah_short(n):
+    """Rp disingkat pakai Rb/Jt/M dengan koma sebagai desimal (gaya Indonesia).
+    Contoh: 14.300.000 -> Rp 14,3Jt ; 1.250.000.000 -> Rp 1,3M"""
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    if n >= 1_000_000_000:
+        val, suf = n / 1_000_000_000, "M"
+    elif n >= 1_000_000:
+        val, suf = n / 1_000_000, "Jt"
+    elif n >= 1_000:
+        val, suf = n / 1_000, "Rb"
+    else:
+        return f"{sign}Rp {fmt_num(n)}"
+    return f"{sign}Rp {f'{val:.1f}'.replace('.', ',')}{suf}"
+
 # ── Top bar ─────────────────────────────────────
 st.markdown(f"""
     <div class="topbar">
@@ -331,19 +354,19 @@ st.markdown('<div class="page-subtitle">Status pembayaran invoice principal seca
 
 # ── KPI cards ────────────────────────────────────
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Invoice", f"{len(df_f):,}")
-col2.metric("Lunas", f"{(df_f['status']=='LUNAS').sum():,}")
-col3.metric("Belum Lunas", f"{(df_f['status']=='BELUM LUNAS').sum():,}")
+col1.metric("Total Invoice", fmt_num(len(df_f)))
+col2.metric("Lunas", fmt_num((df_f['status']=='LUNAS').sum()))
+col3.metric("Belum Lunas", fmt_num((df_f['status']=='BELUM LUNAS').sum()))
 total_belum_rp = df_f.loc[df_f["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
-col4.metric("Nominal Belum Lunas", f"Rp {total_belum_rp:,.0f}")
+col4.metric("Nominal Belum Lunas", fmt_rupiah_short(total_belum_rp), help=fmt_rupiah(total_belum_rp))
 
 # invoice jatuh tempo / lewat jatuh tempo tapi belum lunas
 today = pd.Timestamp(date.today())
 overdue = df_f[(df_f["status"] == "BELUM LUNAS") & (df_f["tanggal_jatuh_tempo"] < today)]
 if len(overdue):
     st.markdown(
-        f'<div class="notice-box">⚠ {len(overdue):,} invoice sudah LEWAT JATUH TEMPO dan belum '
-        f'dibayar (total Rp {overdue["nominal_invoice"].sum():,.0f})</div>',
+        f'<div class="notice-box">⚠ {fmt_num(len(overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
+        f'dibayar (total {fmt_rupiah(overdue["nominal_invoice"].sum())})</div>',
         unsafe_allow_html=True,
     )
 
@@ -414,7 +437,7 @@ with c2:
                 <div class="aging-row">
                     <div class="aging-label-row">
                         <span>{label}</span>
-                        <b>Rp {val:,.0f}</b>
+                        <b>{fmt_rupiah(val)}</b>
                     </div>
                     <div class="aging-bar-bg">
                         <div class="aging-bar-fill" style="width:{pct}%;background:{color};"></div>
@@ -475,10 +498,10 @@ for _, row in summary.iterrows():
     fg, bg = risk_colors[row["Risk"]]
     rc = st.columns([2.2, 1.6, 1.6, 1.2, 1])
     rc[0].markdown(f"**{row['principal']}**")
-    rc[1].markdown(f"Rp {row['Total Nominal']:,.0f}")
+    rc[1].markdown(fmt_rupiah(row['Total Nominal']))
     color_amt = RED_DARK if row["Nominal Belum Lunas"] > 0 else INK
-    rc[2].markdown(f"<span style='color:{color_amt};font-weight:700;'>Rp {row['Nominal Belum Lunas']:,.0f}</span>", unsafe_allow_html=True)
-    rc[3].markdown(f"{int(row['Jumlah Belum Lunas']):,}")
+    rc[2].markdown(f"<span style='color:{color_amt};font-weight:700;'>{fmt_rupiah(row['Nominal Belum Lunas'])}</span>", unsafe_allow_html=True)
+    rc[3].markdown(fmt_num(int(row['Jumlah Belum Lunas'])))
     rc[4].markdown(f"<span class='badge' style='background:{bg};color:{fg};'>{row['Risk']}</span>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
