@@ -6,7 +6,7 @@ from datetime import date
 
 st.set_page_config(
     page_title="Monitoring Pembayaran Principal",
-    page_icon="💳",
+    page_icon="◆",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -27,6 +27,32 @@ GREEN     = "#16A34A"
 GREEN_SOFT= "#E9F9EF"
 AMBER     = "#B45309"
 AMBER_SOFT= "#FEF3E2"
+
+# =========================================================
+# IKON KUSTOM (SVG, bukan emoji) -- dipakai di sidebar, notice box,
+# dan tombol download supaya tampilan konsisten & tidak bergantung
+# pada font emoji bawaan OS/browser.
+# =========================================================
+def icon_svg(name, color="currentColor", size=15):
+    paths = {
+        # kotak grid 2x2 -> "Dashboard"
+        "grid": '<rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
+        # tiga batang naik -> "Principal"
+        "bars": '<rect x="1" y="9" width="3.2" height="6" rx="0.6"/><rect x="6.4" y="5" width="3.2" height="10" rx="0.6"/><rect x="11.8" y="1" width="3.2" height="14" rx="0.6"/>',
+        # lingkaran + garis tengah -> "Pembayaran"
+        "coin": '<circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="4.3" x2="8" y2="11.7" stroke="currentColor" stroke-width="1.6"/>',
+        # segitiga peringatan + seru -> pengganti "⚠"
+        "warn": '<path d="M8 1.4 L15 14.6 H1 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><line x1="8" y1="6.2" x2="8" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12.3" r="0.9"/>',
+        # panah ke bawah menuju garis -> pengganti "⬇"
+        "download": '<line x1="8" y1="1.5" x2="8" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.2 7 L8 11 L11.8 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="2" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    }
+    fill = "none" if name in ("warn", "download") else color
+    extra_fill = f'fill="{color}"' if name in ("grid", "bars") else ""
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 16 16" '
+        f'xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px;color:{color};" {extra_fill}>'
+        f'{paths[name]}</svg>'
+    )
 
 st.markdown(f"""
 <style>
@@ -243,13 +269,13 @@ with st.sidebar:
     st.markdown(f"""
         <div style="padding:10px 12px;background:{RED};border-radius:8px;
                     color:white;font-weight:700;font-size:0.9rem;margin-bottom:8px;">
-            📊 &nbsp; Dashboard
+            {icon_svg("grid", "#FFFFFF")} &nbsp; Dashboard
         </div>
         <div style="padding:10px 12px;color:{INK_SOFT};font-weight:600;font-size:0.9rem;">
-            🏭 &nbsp; Principal
+            {icon_svg("bars", INK_SOFT)} &nbsp; Principal
         </div>
         <div style="padding:10px 12px;color:{INK_SOFT};font-weight:600;font-size:0.9rem;">
-            💰 &nbsp; Pembayaran
+            {icon_svg("coin", INK_SOFT)} &nbsp; Pembayaran
         </div>
     """, unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -316,7 +342,7 @@ def fmt_rupiah_short(n):
         val, suf = n / 1_000, "Rb"
     else:
         return f"{sign}Rp {fmt_num(n)}"
-    return f"{sign}Rp {f'{val:.1f}'.replace('.', ',')}{suf}"
+    return f"{sign}Rp {val:.1f}{suf}"
 
 # ── Top bar ─────────────────────────────────────
 st.markdown(f"""
@@ -333,7 +359,7 @@ df = load_data()
 
 if df.empty:
     st.markdown('<div class="page-title">Payment Monitoring Overview</div>', unsafe_allow_html=True)
-    st.markdown('<div class="notice-box">⚠ Belum ada data di Supabase. Jalankan upload_to_supabase.py dulu di komputer kamu.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="notice-box">{icon_svg("warn", RED_DARK)} Belum ada data di Supabase. Jalankan upload_to_supabase.py dulu di komputer kamu.</div>', unsafe_allow_html=True)
     st.stop()
 
 # ── Sidebar filter (isi setelah data ada) ───────
@@ -365,9 +391,21 @@ today = pd.Timestamp(date.today())
 overdue = df_f[(df_f["status"] == "BELUM LUNAS") & (df_f["tanggal_jatuh_tempo"] < today)]
 if len(overdue):
     st.markdown(
-        f'<div class="notice-box">⚠ {fmt_num(len(overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
+        f'<div class="notice-box">{icon_svg("warn", RED_DARK)} {fmt_num(len(overdue))} invoice sudah LEWAT JATUH TEMPO dan belum '
         f'dibayar (total {fmt_rupiah(overdue["nominal_invoice"].sum())})</div>',
         unsafe_allow_html=True,
+    )
+    kolom_overdue = [
+        "principal", "no_invoice", "no_payment_advice", "nominal_invoice",
+        "no_miro", "tanggal_jatuh_tempo", "tanggal_bayar", "status",
+        "sumber_file", "sumber_sheet",
+    ]
+    st.download_button(
+        "↓  Unduh Daftar Invoice Lewat Jatuh Tempo (CSV)",
+        overdue[kolom_overdue].sort_values("tanggal_jatuh_tempo").to_csv(index=False, sep=";").encode("utf-8-sig"),
+        file_name=f"invoice_lewat_jatuh_tempo_{today.date()}.csv",
+        mime="text/csv",
+        key="download_overdue",
     )
 
 st.write("")
@@ -527,7 +565,7 @@ st.dataframe(
 )
 
 st.download_button(
-    "⬇  Unduh Hasil Filter (CSV)",
+    "↓  Unduh Hasil Filter (CSV)",
     df_f[kolom_tampil].to_csv(index=False, sep=";").encode("utf-8-sig"),
     file_name="monitoring_pembayaran_filtered.csv",
     mime="text/csv",
