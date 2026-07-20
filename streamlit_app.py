@@ -204,9 +204,9 @@ st.markdown(f"""
        tampil sekarang karena header tidak lagi disembunyikan total
        (perlu dibiarkan tampil supaya tombol << / >> sidebar berfungsi). */
     .block-container {{
-        padding-top: 3.25rem;
+        padding-top: 3.2rem;
         padding-bottom: 2rem;
-        max-width: 1400px;
+        max-width: 1440px;
     }}
 
     /* ---- top bar ---- */
@@ -874,28 +874,26 @@ if halaman == "Dashboard":
         nominal_belum_all = df_f.loc[df_f["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
         total_nominal_all = nominal_lunas_all + nominal_belum_all
         if total_nominal_all > 0:
-            fig_komposisi = go.Figure(go.Pie(
-                labels=["Lunas", "Belum Lunas"],
-                values=[nominal_lunas_all, nominal_belum_all],
-                customdata=[fmt_rupiah(nominal_lunas_all), fmt_rupiah(nominal_belum_all)],
-                hole=0.58,
-                sort=False,
-                marker=dict(colors=[GREEN, RED], line=dict(color=CARD, width=2)),
-                textinfo="label+percent",
-                textfont=dict(size=12, family="Inter", color=INK),
-                hovertemplate="<b>%{label}</b><br>%{customdata}<extra></extra>",
+            fig_komposisi = go.Figure(go.Bar(
+                x=[nominal_lunas_all, nominal_belum_all],
+                y=["Lunas", "Belum Lunas"],
+                orientation="h",
+                marker_color=[GREEN, RED],
+                text=[fmt_rupiah_short(nominal_lunas_all), fmt_rupiah_short(nominal_belum_all)],
+                textposition="outside",
+                textfont=dict(family="Inter", size=12, color=INK),
+                hovertext=[fmt_rupiah(nominal_lunas_all), fmt_rupiah(nominal_belum_all)],
+                hoverinfo="text",
             ))
             fig_komposisi.update_layout(
-                showlegend=False,
-                height=260,
+                height=220,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(family="Inter", color=INK),
-                annotations=[dict(
-                    text=f"<b>{fmt_rupiah_short(total_nominal_all)}</b><br><span style='font-size:11px;color:{INK_SOFT}'>Total Nominal</span>",
-                    x=0.5, y=0.5, showarrow=False, font=dict(size=14, color=INK),
-                )],
+                showlegend=False,
+                xaxis=dict(showgrid=False, zeroline=True, zerolinecolor=LINE, tickfont=dict(size=10, color=INK_SOFT)),
+                yaxis=dict(tickfont=dict(size=12, color=INK, family="Inter")),
             )
             st.plotly_chart(fig_komposisi, use_container_width=True, config={"displayModeBar": False})
         else:
@@ -1033,7 +1031,7 @@ elif halaman == "Outstanding":
             # kalau semua principal kebetulan level risikonya sama, chart jadi
             # satu warna doang dan nggak kebaca). Risiko tetap ditampilkan,
             # dipindah ke legend badge di bawah chart.
-            palet_principal = [RED, RED_HOVER, RED_DARK, "#E8929B", "#701019", "#F0BFC4", "#5C1019", "#C96570"]
+            palet_principal = [RED, RED_HOVER, RED_DARK, "#93232F", "#701019", "#C23347", "#5C1019", "#4A0D14"]
             warna_slice = [palet_principal[i % len(palet_principal)] for i in range(len(summary_o_chart))]
             hover_text = [fmt_rupiah(v) for v in summary_o_chart["Nominal Belum Lunas"]]
             fig_pie = go.Figure(go.Pie(
@@ -1044,7 +1042,7 @@ elif halaman == "Outstanding":
                 sort=False,
                 marker=dict(colors=warna_slice, line=dict(color=CARD, width=2)),
                 textinfo="label+percent",
-                textfont=dict(size=11, family="Inter", color=INK),
+                textfont=dict(size=11, family="Inter", color="#FFFFFF"),
                 hovertemplate="<b>%{label}</b><br>%{customdata}<extra></extra>",
             ))
             fig_pie.update_layout(
