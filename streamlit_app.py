@@ -20,7 +20,7 @@ st.set_page_config(
 # varian *_final_redesign: Dashboard, Outstanding, Lunas).
 # =========================================================
 BG        = "#FFFFFF"
-BG_SOFT   = "#F9F9FF"   # "surface"/"background" -- ganti dari bone-white ke ini
+BG_SOFT   = "#FFFFFF"   # background utama -- putih polos sesuai permintaan
 CARD      = "#FFFFFF"   # "surface-container-lowest"
 RED       = "#9E0013"   # "primary"
 RED_HOVER = "#C61A23"   # "primary-container" -- state hover/aktif
@@ -42,17 +42,30 @@ MONO_FONT = "'Inter', sans-serif"  # desain baru pakai Inter saja (IBM Plex Mono
 # sama persis polanya dengan app.py: dibaca sekali, di-cache sebagai
 # base64, dan kalau filenya belum ada, fallback ke mark teks lama
 # supaya app tetap jalan normal (tidak error).
+# Dicoba dari beberapa kemungkinan path/nama sekaligus -- server Linux-nya
+# Streamlit Cloud itu case-sensitive, jadi "Logo.png" vs "logo.png" dianggap
+# beda file walau di Windows/Mac kelihatan sama.
 # =========================================================
-LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.png")
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGO_CANDIDATES = [
+    os.path.join(_SCRIPT_DIR, "assets", "logo.png"),
+    os.path.join(_SCRIPT_DIR, "assets", "Logo.png"),
+    os.path.join(_SCRIPT_DIR, "assets", "logo.PNG"),
+    os.path.join(_SCRIPT_DIR, "assets", "logo.jpg"),
+    os.path.join("assets", "logo.png"),
+]
+LOGO_PATH = LOGO_CANDIDATES[0]
 
 
 @st.cache_data(show_spinner=False)
 def load_logo_b64():
-    try:
-        with open(LOGO_PATH, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    except FileNotFoundError:
-        return None
+    for path in LOGO_CANDIDATES:
+        try:
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        except FileNotFoundError:
+            continue
+    return None
 
 
 def logo_html(height_px, fallback_html):
@@ -394,61 +407,38 @@ st.markdown(f"""
         padding-top: 18px;
     }}
 
-    /* ---- sidebar nav (dibuat dari st.radio, disamarkan jadi menu klik) ---- */
-    section[data-testid="stSidebar"] div[role="radiogroup"] {{
+    /* ---- sidebar nav (sekarang st.button asli + ikon Material Symbols,
+       bukan st.radio lagi -- baris bulatan radio yang tidak bisa
+       disembunyikan via CSS di beberapa versi Streamlit jadi hilang total
+       karena memang tidak dipakai lagi, bukan disembunyikan) ---- */
+    .st-key-sidebar_nav {{
         display: flex;
         flex-direction: column;
         gap: 4px;
         margin-bottom: 4px;
     }}
-    /* zero-kan margin bawaan Streamlit pada wrapper tiap opsi, biar jarak
-       antar menu murni diatur dari gap di atas -- ini yang bikin
-       "Dashboard/Principal/Pembayaran" kelihatan renggang tidak rata */
-    section[data-testid="stSidebar"] div[role="radiogroup"] > * {{
-        margin: 0 !important;
-    }}
-    section[data-testid="stSidebar"] div[role="radiogroup"] label {{
-        display: flex;
-        align-items: center;
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 8px;
+    .st-key-sidebar_nav button {{
+        justify-content: flex-start !important;
+        gap: 10px;
         font-weight: 600;
         font-size: 0.9rem;
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+    }}
+    .st-key-sidebar_nav button[kind="secondary"] {{
+        background-color: transparent !important;
+        border: none !important;
         color: {INK} !important;
-        opacity: 1 !important;
-        cursor: pointer;
-        transition: background 0.12s ease, color 0.12s ease;
     }}
-    /* paksa semua elemen di dalam label (termasuk <p> teks) ikut warna
-       label -- ini kunci perbaikan "menu blur": tema gelap bawaan Streamlit
-       suka menimpa warna/opacity elemen anak secara langsung. */
-    section[data-testid="stSidebar"] div[role="radiogroup"] label * {{
-        color: inherit !important;
-        opacity: 1 !important;
-    }}
-    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-        background: {RED_SOFT};
+    .st-key-sidebar_nav button[kind="secondary"]:hover {{
+        background-color: {RED_SOFT} !important;
         color: {RED_DARK} !important;
     }}
-    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
-        background: {RED};
+    .st-key-sidebar_nav button[kind="primary"] {{
+        background-color: {RED} !important;
+        border: none !important;
         color: #FFFFFF !important;
-    }}
-    /* bulatan radio bawaan Streamlit (BaseWeb) -- disembunyikan lewat 2
-       selector sekaligus (posisi + atribut data-baseweb) supaya tetap kena
-       walau struktur DOM-nya berubah antar versi Streamlit. Ini perbaikan
-       untuk ikon dobel (bulatan kosong + ◆/▲/●) yang kelihatan berantakan. */
-    section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child,
-    section[data-testid="stSidebar"] div[role="radiogroup"] label [data-baseweb="radio"] {{
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
-    }}
-    section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin: 0;
+        box-shadow: none !important;
     }}
 
     /* ---- widget filter sidebar (multiselect & text input) --
@@ -529,18 +519,26 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-    nav_options = ["Dashboard", "Outstanding", "Lunas"]
-    nav_labels = {
-        "Dashboard": "◆  Dashboard",
-        "Outstanding": "▲  Outstanding",
-        "Lunas": "●  Lunas",
-    }
-    halaman = st.radio(
-        "Menu", nav_options,
-        format_func=lambda x: nav_labels[x],
-        key="nav_page",
-        label_visibility="collapsed",
-    )
+    if "active_page" not in st.session_state:
+        st.session_state.active_page = "Dashboard"
+
+    nav_items = [
+        ("Dashboard", ":material/dashboard:"),
+        ("Outstanding", ":material/pending_actions:"),
+        ("Lunas", ":material/check_circle:"),
+    ]
+    with st.container(key="sidebar_nav"):
+        for page_key, mat_icon in nav_items:
+            is_active = st.session_state.active_page == page_key
+            if st.button(
+                page_key, key=f"nav_{page_key}", icon=mat_icon,
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                st.session_state.active_page = page_key
+                st.rerun()
+    halaman = st.session_state.active_page
+
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown('<div class="card-title" style="font-size:1rem;margin-bottom:12px;">Filter</div>', unsafe_allow_html=True)
 
