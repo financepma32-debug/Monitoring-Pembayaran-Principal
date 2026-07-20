@@ -15,25 +15,27 @@ st.set_page_config(
 )
 
 # =========================================================
-# PALET WARNA -- disamakan dengan design system app.py (Monitoring EBT)
-# supaya kedua dashboard PMA terasa satu keluarga: bone-white +
-# PMA red + IBM Plex Mono untuk angka, bukan lagi merah generik.
+# PALET WARNA -- disamakan PERSIS dengan hasil redesign Stitch
+# (design system "Vivid Crimson Metric", dipakai konsisten di semua
+# varian *_final_redesign: Dashboard, Outstanding, Lunas).
 # =========================================================
 BG        = "#FFFFFF"
-BG_SOFT   = "#FBF9F6"   # bone white -- sama seperti BONE_WHITE di app.py
-CARD      = "#FFFFFF"
-RED       = "#B01C2E"   # PMA_RED -- disamakan dengan app.py
-RED_HOVER = "#D94F5C"   # PMA_RED_SOFT -- state hover tombol, sama seperti app.py
-RED_DARK  = "#8A1522"
-RED_SOFT  = "#F6DADD"   # disamakan dengan PRIMARY_FIXED app.py
-INK       = "#26221F"   # disamakan dengan app.py
-INK_SOFT  = "#8A8078"   # disamakan dengan MUTED app.py
-LINE      = "#ECE6DF"   # disamakan dengan BORDER app.py
+BG_SOFT   = "#F9F9FF"   # "surface"/"background" -- ganti dari bone-white ke ini
+CARD      = "#FFFFFF"   # "surface-container-lowest"
+RED       = "#9E0013"   # "primary"
+RED_HOVER = "#C61A23"   # "primary-container" -- state hover/aktif
+RED_DARK  = "#930011"   # "on-primary-fixed-variant"
+RED_SOFT  = "#FFDAD6"   # "primary-fixed" -- background lembut merah (badge dsb)
+INK       = "#151C27"   # "on-surface"
+INK_SOFT  = "#575E70"   # "secondary"
+LINE      = "#E5BDB9"   # "outline-variant"
 GREEN     = "#16A34A"
-GREEN_SOFT= "#E9F9EF"
-AMBER     = "#B45309"
-AMBER_SOFT= "#FEF3E2"
-MONO_FONT = "'IBM Plex Mono', monospace"  # font angka finansial, seperti di app.py
+GREEN_SOFT= "#DCFCE7"   # "success-container"
+AMBER     = "#9A3412"   # dekat "orange-800" di badge Warning
+AMBER_SOFT= "#FFEDD5"   # "orange-100"
+BLUE      = "#0049A0"   # "tertiary" -- dipakai untuk badge gaya "Low Risk"
+BLUE_SOFT = "#DBEAFE"
+MONO_FONT = "'Inter', sans-serif"  # desain baru pakai Inter saja (IBM Plex Mono dilepas)
 
 # =========================================================
 # LOGO -- assets/logo.png (satu folder dengan file ini di repo),
@@ -136,7 +138,7 @@ def section_title(name, text):
 
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
     #MainMenu, footer {{visibility: hidden;}}
     /* Sengaja TIDAK menyentuh visibility/display pada elemen <header>,
@@ -279,7 +281,7 @@ st.markdown(f"""
     div[data-testid="stMetric"] {{
         background-color: {CARD};
         border: 1px solid {LINE};
-        border-radius: 14px;
+        border-radius: 10px;
         padding: 16px 18px 14px 18px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }}
@@ -302,10 +304,18 @@ st.markdown(f"""
     .card {{
         background-color: {CARD};
         border: 1px solid {LINE};
-        border-radius: 16px;
+        border-radius: 12px;
         padding: 22px 24px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         height: 100%;
+        position: relative;
+        overflow: hidden;
+    }}
+    .card-stripe {{
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 4px;
     }}
     .card-title {{
         font-size: 1.02rem;
@@ -578,6 +588,15 @@ def fmt_num(n):
     except (ValueError, TypeError):
         return str(n)
 
+def initials(name):
+    """Ambil 2 huruf inisial dari nama principal, buat badge avatar -- murni
+    presentasi (mengikuti pola badge 'SI'/'MJ'/'NS' di desain Stitch), bukan
+    kalkulasi data."""
+    parts = str(name).split()
+    if len(parts) >= 2:
+        return (parts[0][:1] + parts[1][:1]).upper()
+    return str(name)[:2].upper()
+
 def fmt_rupiah(n):
     """Rp dengan titik ribuan, tanpa disingkat. Contoh: Rp 14.300.000"""
     return f"Rp {fmt_num(n)}"
@@ -828,6 +847,7 @@ if halaman == "Dashboard":
     with col1:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{INK_SOFT};"></div>
                 <div class="kpi-label">{icon_svg("grid", INK_SOFT)} Total Invoice</div>
                 <div class="kpi-value">{fmt_num(total_invoice_n)}</div>
                 <div class="kpi-delta">Sesuai filter aktif</div>
@@ -836,6 +856,7 @@ if halaman == "Dashboard":
     with col2:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{GREEN};"></div>
                 <div class="kpi-label">{icon_svg("check", GREEN)} Lunas</div>
                 <div class="kpi-value" style="color:{GREEN};">{fmt_num(lunas_n)}</div>
                 <div class="kpi-delta">Invoice sudah dibayar</div>
@@ -844,6 +865,7 @@ if halaman == "Dashboard":
     with col3:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{RED};"></div>
                 <div class="kpi-label">{icon_svg("warn", RED_DARK)} Belum Lunas</div>
                 <div class="kpi-value" style="color:{RED_DARK};">{fmt_num(belum_lunas_n)}</div>
                 <div class="kpi-delta">Invoice belum dibayar</div>
@@ -852,6 +874,7 @@ if halaman == "Dashboard":
     with col4:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{RED};"></div>
                 <div class="kpi-label">{icon_svg("coin", RED)} Nominal Belum Lunas</div>
                 <div class="kpi-value red">{fmt_rupiah_short(total_belum_rp)}</div>
                 <div class="kpi-delta mono-num">{fmt_rupiah(total_belum_rp)}</div>
@@ -912,13 +935,25 @@ if halaman == "Dashboard":
             for _, row in top5_principal.iterrows():
                 pct = max(3, (row["Nominal Belum Lunas"] / max_top) * 100)
                 st.markdown(f"""
-                    <div class="aging-row">
-                        <div class="aging-label-row">
-                            <span>{row['principal']}</span>
-                            <b class="mono-num">{fmt_rupiah(row['Nominal Belum Lunas'])}</b>
+                    <div style="display:flex;align-items:center;justify-content:space-between;
+                                padding:14px;background:{CARD};border:1px solid {LINE};
+                                border-radius:8px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:40px;height:40px;border-radius:8px;background:{RED_SOFT};
+                                        display:flex;align-items:center;justify-content:center;
+                                        font-weight:800;color:{RED};font-size:0.8rem;flex-shrink:0;">
+                                {initials(row['principal'])}
+                            </div>
+                            <div>
+                                <div style="font-weight:700;font-size:0.85rem;color:{INK};">{row['principal']}</div>
+                                <div style="font-size:0.72rem;color:{INK_SOFT};">{fmt_num(int(row['Jumlah Belum Lunas']))} invoice belum lunas</div>
+                            </div>
                         </div>
-                        <div class="aging-bar-bg">
-                            <div class="aging-bar-fill" style="width:{pct}%;background:{RED};"></div>
+                        <div style="text-align:right;">
+                            <div class="mono-num" style="font-weight:800;color:{RED};font-size:0.85rem;">{fmt_rupiah(row['Nominal Belum Lunas'])}</div>
+                            <div style="width:100px;height:6px;background:{LINE};border-radius:999px;margin-top:6px;overflow:hidden;margin-left:auto;">
+                                <div style="width:{pct}%;height:100%;background:{RED};"></div>
+                            </div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -947,6 +982,7 @@ elif halaman == "Outstanding":
     with ocol1:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{INK_SOFT};"></div>
                 <div class="kpi-label">{icon_svg("warn", INK_SOFT)} Total Outstanding</div>
                 <div class="kpi-value">{fmt_num(total_outstanding_n)}</div>
                 <div class="kpi-delta">Invoice belum lunas</div>
@@ -955,6 +991,7 @@ elif halaman == "Outstanding":
     with ocol2:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{RED};"></div>
                 <div class="kpi-label">{icon_svg("coin", RED)} Nominal Outstanding</div>
                 <div class="kpi-value red">{fmt_rupiah_short(nominal_outstanding)}</div>
                 <div class="kpi-delta mono-num">{fmt_rupiah(nominal_outstanding)}</div>
@@ -963,6 +1000,7 @@ elif halaman == "Outstanding":
     with ocol3:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{RED_DARK};"></div>
                 <div class="kpi-label">{icon_svg("warn", RED_DARK)} Lewat Jatuh Tempo</div>
                 <div class="kpi-value" style="color:{RED_DARK};">{fmt_num(overdue_n)}</div>
                 <div class="kpi-delta">Invoice</div>
@@ -971,6 +1009,7 @@ elif halaman == "Outstanding":
     with ocol4:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{RED_DARK};"></div>
                 <div class="kpi-label">{icon_svg("coin", RED_DARK)} Nominal Lewat Tempo</div>
                 <div class="kpi-value" style="color:{RED_DARK};">{fmt_rupiah_short(overdue_rp)}</div>
                 <div class="kpi-delta mono-num">{fmt_rupiah(overdue_rp)}</div>
@@ -994,9 +1033,9 @@ elif halaman == "Outstanding":
             belum["hari_lewat"] = (today - belum["tanggal_jatuh_tempo"]).dt.days
             buckets = [
                 ("Belum Jatuh Tempo", belum["hari_lewat"] < 0, INK_SOFT),
-                ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F0BFC4"),
-                ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E28D96"),
-                ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#CE5A66"),
+                ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#E8929B"),
+                ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#D45A69"),
+                ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#BB2E42"),
                 ("90+ Hari", belum["hari_lewat"] > 90, RED),
             ]
             max_val = max(belum.loc[cond, "nominal_invoice"].sum() for _, cond, _ in buckets) or 1
@@ -1031,7 +1070,7 @@ elif halaman == "Outstanding":
             # kalau semua principal kebetulan level risikonya sama, chart jadi
             # satu warna doang dan nggak kebaca). Risiko tetap ditampilkan,
             # dipindah ke legend badge di bawah chart.
-            palet_principal = [RED, RED_HOVER, RED_DARK, "#93232F", "#701019", "#C23347", "#5C1019", "#4A0D14"]
+            palet_principal = [RED, RED_HOVER, RED_DARK, "#7A2A34", "#5C1019", "#B8515E", "#4A0D14", "#8F3B45"]
             warna_slice = [palet_principal[i % len(palet_principal)] for i in range(len(summary_o_chart))]
             hover_text = [fmt_rupiah(v) for v in summary_o_chart["Nominal Belum Lunas"]]
             fig_pie = go.Figure(go.Pie(
@@ -1059,17 +1098,23 @@ elif halaman == "Outstanding":
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
 
-            # legend: warna slice + nama principal + badge risiko per baris
+            # legend: warna slice + nama principal + persentase + badge risiko,
+            # menyamakan persis pola legend di mockup Stitch
+            total_chart = summary_o_chart["Nominal Belum Lunas"].sum() or 1
             for i, (_, row) in enumerate(summary_o_chart.iterrows()):
                 dot = warna_slice[i]
                 fg, bg = risk_colors[row["Risk"]]
+                pct_slice = row["Nominal Belum Lunas"] / total_chart * 100
                 st.markdown(f"""
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 2px;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <span style="width:10px;height:10px;border-radius:50%;background:{dot};display:inline-block;flex-shrink:0;"></span>
                             <span style="font-size:0.82rem;font-weight:600;color:{INK};">{row['principal']}</span>
                         </div>
-                        <span class="badge" style="background:{bg};color:{fg};font-size:0.66rem;">{row['Risk']}</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:0.74rem;color:{INK_SOFT};">{pct_slice:.1f}%</span>
+                            <span class="badge" style="background:{bg};color:{fg};font-size:0.66rem;">{row['Risk']}</span>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
         else:
@@ -1120,6 +1165,7 @@ elif halaman == "Lunas":
     with lcol1:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{GREEN};"></div>
                 <div class="kpi-label">{icon_svg("check", GREEN)} Total Invoice Lunas</div>
                 <div class="kpi-value" style="color:{GREEN};">{fmt_num(total_lunas_n)}</div>
                 <div class="kpi-delta">Sudah dibayar</div>
@@ -1128,6 +1174,7 @@ elif halaman == "Lunas":
     with lcol2:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{GREEN};"></div>
                 <div class="kpi-label">{icon_svg("coin", GREEN)} Nominal Lunas</div>
                 <div class="kpi-value" style="color:{GREEN};">{fmt_rupiah_short(nominal_lunas_total)}</div>
                 <div class="kpi-delta mono-num">{fmt_rupiah(nominal_lunas_total)}</div>
@@ -1136,6 +1183,7 @@ elif halaman == "Lunas":
     with lcol3:
         st.markdown(f"""
             <div class="card">
+                <div class="card-stripe" style="background:{INK_SOFT};"></div>
                 <div class="kpi-label">{icon_svg("grid", INK_SOFT)} Rata-rata per Invoice</div>
                 <div class="kpi-value">{fmt_rupiah_short(rata_rata_lunas)}</div>
                 <div class="kpi-delta mono-num">{fmt_rupiah(rata_rata_lunas)}</div>
