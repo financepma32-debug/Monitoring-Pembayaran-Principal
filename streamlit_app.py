@@ -437,18 +437,22 @@ st.markdown(f"""
        karena memang tidak dipakai lagi, bukan disembunyikan) ---- */
     /* ---- sidebar nav (st.button asli + ikon Material Symbols).
        Pakai class .stButton (class bawaan Streamlit yang stabil dari dulu)
-       -- bukan lagi key-based class yang ternyata tidak konsisten kena di
-       versi Streamlit ini. Semua tombol sidebar: rata kiri, tanpa kotak
-       border/shadow sama sekali kecuali yang lagi aktif (primary). ---- */
+       -- bukan lagi key-based class. Tombol tidak aktif pakai type="tertiary"
+       (jenis tombol Streamlit yang memang didesain ghost/tanpa kotak),
+       bukan "secondary" yang bawaannya selalu ada border. ---- */
     section[data-testid="stSidebar"] .stButton {{
         margin-bottom: 4px;
     }}
     section[data-testid="stSidebar"] .stButton > button,
     section[data-testid="stSidebar"] .stButton > button:focus,
-    section[data-testid="stSidebar"] .stButton > button:focus:not(:active) {{
-        width: 100%;
+    section[data-testid="stSidebar"] .stButton > button:focus:not(:active),
+    section[data-testid="stSidebar"] .stButton > button * {{
         justify-content: flex-start !important;
         text-align: left !important;
+    }}
+    section[data-testid="stSidebar"] .stButton > button {{
+        width: 100%;
+        display: flex !important;
         gap: 10px;
         font-weight: 600;
         font-size: 0.9rem;
@@ -462,8 +466,8 @@ st.markdown(f"""
         color: {INK} !important;
     }}
     section[data-testid="stSidebar"] .stButton > button p,
-    section[data-testid="stSidebar"] .stButton > button span {{
-        text-align: left !important;
+    section[data-testid="stSidebar"] .stButton > button span,
+    section[data-testid="stSidebar"] .stButton > button div {{
         color: inherit !important;
     }}
     section[data-testid="stSidebar"] .stButton > button:hover {{
@@ -614,7 +618,7 @@ with st.sidebar:
         if st.button(
             label, key=f"nav_{page_id}", icon=mat_icon,
             use_container_width=True,
-            type="primary" if is_active else "secondary",
+            type="primary" if is_active else "tertiary",
         ):
             st.session_state.active_page = page_id
             st.rerun()
@@ -629,7 +633,7 @@ with st.sidebar:
         ("Principal_Lunas", "Lunas", ":material/check_circle:"),
     ]
     principal_aktif = st.session_state.active_page.startswith("Principal_")
-    with st.expander("Monitoring Pembayaran Principal", expanded=principal_aktif, icon=":material/folder:"):
+    with st.expander("Monitoring Pembayaran Principal", expanded=principal_aktif, icon=":material/inventory_2:"):
         for page_id, label, mat_icon in principal_subpages:
             nav_button(page_id, label, mat_icon)
 
@@ -643,7 +647,7 @@ with st.sidebar:
         ("NonPrincipal_Lunas", "Lunas", ":material/check_circle:"),
     ]
     nonprincipal_aktif = st.session_state.active_page.startswith("NonPrincipal_")
-    with st.expander("Monitoring Pembayaran Non Principal", expanded=nonprincipal_aktif, icon=":material/folder:"):
+    with st.expander("Monitoring Pembayaran Non Principal", expanded=nonprincipal_aktif, icon=":material/category:"):
         for page_id, label, mat_icon in nonprincipal_subpages:
             nav_button(page_id, label, mat_icon)
 
