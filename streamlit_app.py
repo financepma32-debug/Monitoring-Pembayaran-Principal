@@ -525,6 +525,37 @@ st.markdown(f"""
         border-top: 1px solid {LINE} !important;
     }}
 
+    /* st.container(border=True) -- disamakan warna border & radius-nya
+       dengan .card custom, dipakai di tabel Daftar Invoice Lunas */
+    div[data-testid="stVerticalBlockBorderWrapper"] {{
+        border-color: {LINE} !important;
+        border-radius: 12px !important;
+    }}
+
+    /* ---- date range picker (dipakai di halaman Lunas, area konten utama
+       -- BUKAN sidebar, jadi butuh style sendiri; sebelumnya polos tanpa
+       kotak sama sekali) ---- */
+    .stDateInput > div > div,
+    div[data-baseweb="datepicker"] > div {{
+        background-color: {CARD} !important;
+        border: 1px solid {LINE} !important;
+        border-radius: 10px !important;
+        box-shadow: none !important;
+    }}
+    .stDateInput input {{
+        background-color: transparent !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        color: {INK} !important;
+        padding: 8px 12px !important;
+    }}
+    .stDateInput label {{
+        font-weight: 600 !important;
+        font-size: 0.82rem !important;
+        color: {INK_SOFT} !important;
+    }}
+
     /* ---- widget filter sidebar (multiselect & text input) --
        dipaksa terang, supaya tidak ikut dark-mode browser/OS pengunjung.
        Ini perbaikan untuk kotak MEIJI/NSI/SIMBA & "Cari Invoice" yang
@@ -1493,27 +1524,25 @@ elif halaman == "Principal_Lunas":
     kolom_lunas_display = [c for c in kolom_tampil if c not in ("sumber_file", "sumber_sheet")]
 
     st.write("")
-    st.markdown(f"""
-        <div class="card">
-            <div class="card-title">Daftar Invoice Lunas</div>
-            <div class="card-subtitle">Rincian invoice yang sudah dibayar sesuai filter aktif -- tanpa data invoice outstanding</div>
-    """, unsafe_allow_html=True)
-    st.dataframe(
-        df_lunas_tampil[kolom_lunas_display].sort_values("tanggal_bayar", ascending=False),
-        use_container_width=True,
-        hide_index=True,
-        height=460,
-        column_config={
-            "principal": st.column_config.TextColumn("Principal"),
-            "no_invoice": st.column_config.TextColumn("No. Invoice"),
-            "no_payment_advice": st.column_config.TextColumn("No. Payment Advice"),
-            "nominal_invoice": st.column_config.NumberColumn("Nominal (Rp)", format="%d"),
-            "no_miro": st.column_config.TextColumn("No. MIRO"),
-            "tanggal_jatuh_tempo": st.column_config.DateColumn("Jatuh Tempo", format="DD MMM YYYY"),
-            "tanggal_bayar": st.column_config.DateColumn("Tgl Bayar", format="DD MMM YYYY"),
-            "status": st.column_config.TextColumn("Status"),
-        },
-    )
+    with st.container(border=True):
+        st.markdown('<div class="card-title" style="margin-bottom:2px;">Daftar Invoice Lunas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-subtitle" style="margin-bottom:10px;">Rincian invoice yang sudah dibayar sesuai filter aktif -- tanpa data invoice outstanding</div>', unsafe_allow_html=True)
+        st.dataframe(
+            df_lunas_tampil[kolom_lunas_display].sort_values("tanggal_bayar", ascending=False),
+            use_container_width=True,
+            hide_index=True,
+            height=460,
+            column_config={
+                "principal": st.column_config.TextColumn("Principal"),
+                "no_invoice": st.column_config.TextColumn("No. Invoice"),
+                "no_payment_advice": st.column_config.TextColumn("No. Payment Advice"),
+                "nominal_invoice": st.column_config.NumberColumn("Nominal (Rp)", format="%d"),
+                "no_miro": st.column_config.TextColumn("No. MIRO"),
+                "tanggal_jatuh_tempo": st.column_config.DateColumn("Jatuh Tempo", format="DD MMM YYYY"),
+                "tanggal_bayar": st.column_config.DateColumn("Tgl Bayar", format="DD MMM YYYY"),
+                "status": st.column_config.TextColumn("Status"),
+            },
+        )
     st.download_button(
         "↓  Unduh Daftar Lunas (CSV)",
         df_lunas_tampil[kolom_lunas_display].to_csv(index=False, sep=";").encode("utf-8-sig"),
@@ -1521,7 +1550,6 @@ elif halaman == "Principal_Lunas":
         mime="text/csv",
         key="download_lunas_detail",
     )
-    st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
 # HALAMAN: NON PRINCIPAL & SEWA GUDANG -- placeholder, belum ada
