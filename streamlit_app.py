@@ -195,12 +195,16 @@ st.markdown(f"""
         border-right: 1px solid {LINE};
     }}
     section[data-testid="stSidebar"] .block-container {{
-        padding-top: 1.2rem;
+        padding-top: 2.75rem;
     }}
 
-    /* ---- main container padding ---- */
+    /* ---- main container padding ----
+       padding-top dinaikkan supaya topbar (logo + judul) tidak lagi
+       kepotong toolbar Streamlit Cloud (Share/Star/GitHub) yang tetap
+       tampil sekarang karena header tidak lagi disembunyikan total
+       (perlu dibiarkan tampil supaya tombol << / >> sidebar berfungsi). */
     .block-container {{
-        padding-top: 1.6rem;
+        padding-top: 3.25rem;
         padding-bottom: 2rem;
         max-width: 1400px;
     }}
@@ -230,7 +234,8 @@ st.markdown(f"""
         font-size: 1.15rem;
         font-weight: 800;
         color: {RED_DARK};
-        letter-spacing: -0.01em;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
     }}
     .topbar-user {{
         text-align: right;
