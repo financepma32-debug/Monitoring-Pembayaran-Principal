@@ -1,3 +1,6 @@
+import base64
+import os
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -31,6 +34,32 @@ GREEN_SOFT= "#E9F9EF"
 AMBER     = "#B45309"
 AMBER_SOFT= "#FEF3E2"
 MONO_FONT = "'IBM Plex Mono', monospace"  # font angka finansial, seperti di app.py
+
+# =========================================================
+# LOGO -- assets/logo.png (satu folder dengan file ini di repo),
+# sama persis polanya dengan app.py: dibaca sekali, di-cache sebagai
+# base64, dan kalau filenya belum ada, fallback ke mark teks lama
+# supaya app tetap jalan normal (tidak error).
+# =========================================================
+LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.png")
+
+
+@st.cache_data(show_spinner=False)
+def load_logo_b64():
+    try:
+        with open(LOGO_PATH, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except FileNotFoundError:
+        return None
+
+
+def logo_html(height_px, fallback_html):
+    b64 = load_logo_b64()
+    if b64:
+        return (f'<img src="data:image/png;base64,{b64}" '
+                f'style="height:{height_px}px;width:auto;display:block;border-radius:8px;" alt="Logo">')
+    return fallback_html  # jaga-jaga kalau assets/logo.png belum ke-upload ke repo
+
 
 # =========================================================
 # IKON KUSTOM (SVG, bukan emoji) -- dipakai di sidebar, notice box,
@@ -109,7 +138,12 @@ st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
-    #MainMenu, footer, header {{visibility: hidden;}}
+    #MainMenu, footer {{visibility: hidden;}}
+    /* Sengaja TIDAK menyentuh visibility/display pada elemen <header>,
+       cukup disamakan warna latarnya -- kalau header ikut disembunyikan,
+       tombol buka-tutup sidebar (<< / >>) ikut hilang dan sidebar yang
+       sudah dikecilkan jadi tidak bisa dimunculkan lagi. */
+    [data-testid="stHeader"] {{ background-color: {BG_SOFT}; }}
 
     .stApp {{
         background-color: {BG_SOFT};
@@ -347,10 +381,20 @@ st.markdown(f"""
 
     /* ---- sidebar nav (dibuat dari st.radio, disamarkan jadi menu klik) ---- */
     section[data-testid="stSidebar"] div[role="radiogroup"] {{
+        display: flex;
+        flex-direction: column;
         gap: 4px;
         margin-bottom: 4px;
     }}
+    /* zero-kan margin bawaan Streamlit pada wrapper tiap opsi, biar jarak
+       antar menu murni diatur dari gap di atas -- ini yang bikin
+       "Dashboard/Principal/Pembayaran" kelihatan renggang tidak rata */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > * {{
+        margin: 0 !important;
+    }}
     section[data-testid="stSidebar"] div[role="radiogroup"] label {{
+        display: flex;
+        align-items: center;
         width: 100%;
         padding: 10px 12px;
         border-radius: 8px;
@@ -376,8 +420,15 @@ st.markdown(f"""
         background: {RED};
         color: #FFFFFF !important;
     }}
-    section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {{
-        display: none;
+    /* bulatan radio bawaan Streamlit (BaseWeb) -- disembunyikan lewat 2
+       selector sekaligus (posisi + atribut data-baseweb) supaya tetap kena
+       walau struktur DOM-nya berubah antar versi Streamlit. Ini perbaikan
+       untuk ikon dobel (bulatan kosong + ◆/▲/●) yang kelihatan berantakan. */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label [data-baseweb="radio"] {{
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
     }}
     section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{
         font-size: 0.9rem;
@@ -425,7 +476,7 @@ st.markdown(f"""
 with st.sidebar:
     st.markdown(f"""
         <div class="side-brand">
-            <div class="mark">MP</div>
+            {logo_html(38, '<div class="mark">MP</div>')}
             <div>
                 <div class="side-brand-title">Monitoring Pembayaran</div>
                 <div class="side-brand-sub">Principal</div>
@@ -515,7 +566,7 @@ def fmt_rupiah_short(n):
 st.markdown(f"""
     <div class="topbar">
         <div class="topbar-brand">
-            <div class="mark">₨</div>
+            {logo_html(34, '<div class="mark">₨</div>')}
             <div class="topbar-title">Monitoring Pembayaran Principal</div>
         </div>
         <div class="topbar-user"><b>Dashboard</b><br>SIMBA &middot; NSI &middot; MEIJI</div>
