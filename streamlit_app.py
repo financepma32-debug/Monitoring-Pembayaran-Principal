@@ -435,41 +435,51 @@ st.markdown(f"""
        bukan st.radio lagi -- baris bulatan radio yang tidak bisa
        disembunyikan via CSS di beberapa versi Streamlit jadi hilang total
        karena memang tidak dipakai lagi, bukan disembunyikan) ---- */
-    /* ---- sidebar nav (sekarang st.button asli + ikon Material Symbols,
-       bukan st.radio lagi). Target langsung lewat key masing-masing tombol
-       (st-key-nav_...) -- lebih pasti kena daripada lewat container,
-       karena key per-widget selalu diekspos jadi class oleh Streamlit. ---- */
-    div[class*="st-key-nav_"] {{
+    /* ---- sidebar nav (st.button asli + ikon Material Symbols).
+       Pakai class .stButton (class bawaan Streamlit yang stabil dari dulu)
+       -- bukan lagi key-based class yang ternyata tidak konsisten kena di
+       versi Streamlit ini. Semua tombol sidebar: rata kiri, tanpa kotak
+       border/shadow sama sekali kecuali yang lagi aktif (primary). ---- */
+    section[data-testid="stSidebar"] .stButton {{
         margin-bottom: 4px;
     }}
-    div[class*="st-key-nav_"] button,
-    div[class*="st-key-nav_"] button[data-testid*="stBaseButton"] {{
+    section[data-testid="stSidebar"] .stButton > button,
+    section[data-testid="stSidebar"] .stButton > button:focus,
+    section[data-testid="stSidebar"] .stButton > button:focus:not(:active) {{
+        width: 100%;
         justify-content: flex-start !important;
+        text-align: left !important;
         gap: 10px;
         font-weight: 600;
         font-size: 0.9rem;
         border-radius: 8px !important;
         padding: 10px 12px !important;
-        width: 100%;
-    }}
-    div[class*="st-key-nav_"] button[kind="secondary"],
-    div[class*="st-key-nav_"] button[data-testid="stBaseButton-secondary"] {{
-        background-color: transparent !important;
         border: none !important;
+        outline: none !important;
         box-shadow: none !important;
+        background-color: transparent !important;
+        background-image: none !important;
         color: {INK} !important;
     }}
-    div[class*="st-key-nav_"] button[kind="secondary"]:hover,
-    div[class*="st-key-nav_"] button[data-testid="stBaseButton-secondary"]:hover {{
+    section[data-testid="stSidebar"] .stButton > button p,
+    section[data-testid="stSidebar"] .stButton > button span {{
+        text-align: left !important;
+        color: inherit !important;
+    }}
+    section[data-testid="stSidebar"] .stButton > button:hover {{
         background-color: {RED_SOFT} !important;
         color: {RED_DARK} !important;
     }}
-    div[class*="st-key-nav_"] button[kind="primary"],
-    div[class*="st-key-nav_"] button[data-testid="stBaseButton-primary"] {{
+    /* tombol yang lagi aktif (halaman sekarang) -- solid merah */
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"],
+    section[data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-primary"] {{
         background-color: {RED} !important;
-        border: none !important;
         color: #FFFFFF !important;
-        box-shadow: none !important;
+    }}
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover,
+    section[data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-primary"]:hover {{
+        background-color: {RED_HOVER} !important;
+        color: #FFFFFF !important;
     }}
 
     /* grup menu (expander) -- Monitoring Pembayaran Principal/Non Principal */
@@ -477,6 +487,12 @@ st.markdown(f"""
         border: none !important;
         box-shadow: none !important;
         margin-bottom: 2px;
+        background: transparent !important;
+    }}
+    section[data-testid="stSidebar"] [data-testid="stExpander"] > details {{
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
     }}
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary {{
         font-weight: 600;
@@ -493,6 +509,7 @@ st.markdown(f"""
         padding-left: 14px;
         border-left: 2px solid {LINE};
         margin-left: 20px;
+        border-top: none !important;
     }}
 
     /* garis pemisah <hr> di sidebar -- dipaksa penuh & rapi, sebelumnya
@@ -521,15 +538,23 @@ st.markdown(f"""
         margin-bottom: 14px;
     }}
     section[data-testid="stSidebar"] [data-baseweb="select"] > div,
-    section[data-testid="stSidebar"] .stTextInput input {{
+    section[data-testid="stSidebar"] div[data-baseweb="input"],
+    section[data-testid="stSidebar"] div[data-baseweb="base-input"] {{
         background-color: {CARD} !important;
         border: 1px solid {LINE} !important;
-        color: {INK} !important;
         border-radius: 12px !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        box-shadow: none !important;
         min-height: 44px;
     }}
+    /* input mentahnya sendiri dibikin polos -- border/radius/bg sudah
+       dipegang penuh oleh wrapper di atas, supaya tidak dobel garis atau
+       kelihatan seperti terpotong */
     section[data-testid="stSidebar"] .stTextInput input {{
+        background-color: transparent !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        color: {INK} !important;
         padding: 10px 14px !important;
     }}
     section[data-testid="stSidebar"] [data-baseweb="select"] input::placeholder,
@@ -1447,6 +1472,22 @@ elif halaman == "Principal_Lunas":
     df_lunas_tampil = (df_lunas_page if pilih_principal_l == "Semua Principal"
                         else df_lunas_page[df_lunas_page["principal"] == pilih_principal_l])
 
+    # -- filter rentang tanggal bayar --
+    tgl_valid = df_lunas_tampil["tanggal_bayar"].dropna()
+    if not tgl_valid.empty:
+        min_tgl, max_tgl = tgl_valid.min().date(), tgl_valid.max().date()
+        st.markdown('<div class="card-title" style="font-size:0.85rem;margin:12px 0 6px 0;">Rentang Tanggal Bayar</div>', unsafe_allow_html=True)
+        dcol1, dcol2 = st.columns(2)
+        with dcol1:
+            tgl_mulai = st.date_input("Dari", value=min_tgl, min_value=min_tgl, max_value=max_tgl, key="lunas_tgl_mulai")
+        with dcol2:
+            tgl_akhir = st.date_input("Sampai", value=max_tgl, min_value=min_tgl, max_value=max_tgl, key="lunas_tgl_akhir")
+        df_lunas_tampil = df_lunas_tampil[
+            df_lunas_tampil["tanggal_bayar"].dt.date.between(tgl_mulai, tgl_akhir)
+        ]
+
+    kolom_lunas_display = [c for c in kolom_tampil if c not in ("sumber_file", "sumber_sheet")]
+
     st.write("")
     st.markdown(f"""
         <div class="card">
@@ -1454,7 +1495,7 @@ elif halaman == "Principal_Lunas":
             <div class="card-subtitle">Rincian invoice yang sudah dibayar sesuai filter aktif -- tanpa data invoice outstanding</div>
     """, unsafe_allow_html=True)
     st.dataframe(
-        df_lunas_tampil[kolom_tampil].sort_values("tanggal_bayar", ascending=False),
+        df_lunas_tampil[kolom_lunas_display].sort_values("tanggal_bayar", ascending=False),
         use_container_width=True,
         hide_index=True,
         height=460,
@@ -1467,13 +1508,11 @@ elif halaman == "Principal_Lunas":
             "tanggal_jatuh_tempo": st.column_config.DateColumn("Jatuh Tempo", format="DD MMM YYYY"),
             "tanggal_bayar": st.column_config.DateColumn("Tgl Bayar", format="DD MMM YYYY"),
             "status": st.column_config.TextColumn("Status"),
-            "sumber_file": st.column_config.TextColumn("Sumber File"),
-            "sumber_sheet": st.column_config.TextColumn("Sumber Sheet"),
         },
     )
     st.download_button(
         "↓  Unduh Daftar Lunas (CSV)",
-        df_lunas_tampil[kolom_tampil].to_csv(index=False, sep=";").encode("utf-8-sig"),
+        df_lunas_tampil[kolom_lunas_display].to_csv(index=False, sep=";").encode("utf-8-sig"),
         file_name="monitoring_pembayaran_lunas.csv",
         mime="text/csv",
         key="download_lunas_detail",
