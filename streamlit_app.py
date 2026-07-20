@@ -12,21 +12,25 @@ st.set_page_config(
 )
 
 # =========================================================
-# PALET WARNA -- White + Red corporate (ref: Google Stitch)
+# PALET WARNA -- disamakan dengan design system app.py (Monitoring EBT)
+# supaya kedua dashboard PMA terasa satu keluarga: bone-white +
+# PMA red + IBM Plex Mono untuk angka, bukan lagi merah generik.
 # =========================================================
 BG        = "#FFFFFF"
-BG_SOFT   = "#FAFAFA"
+BG_SOFT   = "#FBF9F6"   # bone white -- sama seperti BONE_WHITE di app.py
 CARD      = "#FFFFFF"
-RED       = "#C81E2C"
-RED_DARK  = "#9E1620"
-RED_SOFT  = "#FDEDEE"
-INK       = "#111111"
-INK_SOFT  = "#6B7280"
-LINE      = "#E7E5E4"
+RED       = "#B01C2E"   # PMA_RED -- disamakan dengan app.py
+RED_HOVER = "#D94F5C"   # PMA_RED_SOFT -- state hover tombol, sama seperti app.py
+RED_DARK  = "#8A1522"
+RED_SOFT  = "#F6DADD"   # disamakan dengan PRIMARY_FIXED app.py
+INK       = "#26221F"   # disamakan dengan app.py
+INK_SOFT  = "#8A8078"   # disamakan dengan MUTED app.py
+LINE      = "#ECE6DF"   # disamakan dengan BORDER app.py
 GREEN     = "#16A34A"
 GREEN_SOFT= "#E9F9EF"
 AMBER     = "#B45309"
 AMBER_SOFT= "#FEF3E2"
+MONO_FONT = "'IBM Plex Mono', monospace"  # font angka finansial, seperti di app.py
 
 # =========================================================
 # IKON KUSTOM (SVG, bukan emoji) -- dipakai di sidebar, notice box,
@@ -59,6 +63,11 @@ def icon_svg(name, color="currentColor", size=16):
             <line x1="12" y1="3" x2="12" y2="5.4" {common}/>
             <line x1="12" y1="18.6" x2="12" y2="21" {common}/>
         ''',
+        # lingkaran + centang -> "Lunas"
+        "check": f'''
+            <circle cx="12" cy="12" r="9" {common}/>
+            <path d="M7.5 12.5 L10.5 15.5 L16.5 9" {common}/>
+        ''',
         # segitiga peringatan membulat + seru -> pengganti "⚠"
         "warn": f'''
             <path d="M12 3.2 L21 19.6 A1.6 1.6 0 0 1 19.6 22 H4.4 A1.6 1.6 0 0 1 3 19.6 Z" {common}/>
@@ -89,9 +98,17 @@ def icon_badge(name, fg, bg, size=34, icon_size=16, radius=None):
         f'{icon_svg(name, fg, icon_size)}</span>'
     )
 
+def section_title(name, text):
+    """Judul seksi bergaris merah + ikon, murni presentasi -- dipakai untuk
+    memberi jarak & hierarki visual antar blok konten, meniru .section-title
+    di app.py."""
+    return f'<div class="section-title">{icon_svg(name, RED, 18)}{text}</div>'
+
 
 st.markdown(f"""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
     #MainMenu, footer, header {{visibility: hidden;}}
 
     .stApp {{
@@ -100,6 +117,42 @@ st.markdown(f"""
     html, body, [class*="css"] {{
         color: {INK};
         font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+    }}
+
+    /* angka finansial (invoice, rupiah) pakai mono biar rapi & mudah dibaca,
+       konsisten dengan gaya kartu di app.py */
+    .mono-num {{
+        font-family: {MONO_FONT};
+        font-variant-numeric: tabular-nums;
+    }}
+
+    /* judul seksi bergaris merah -- pemisah antar blok konten,
+       sama seperti .section-title di app.py */
+    .section-title {{
+        display: flex; align-items: center; gap: 8px;
+        font-size: 1.02rem; font-weight: 700; color: {INK};
+        border-left: 3px solid {RED};
+        padding-left: 10px;
+        margin: 28px 0 14px 0;
+    }}
+    .section-title svg {{ color: {RED}; }}
+
+    /* kartu KPI custom (label + ikon, nilai mono, keterangan) --
+       menggantikan st.metric polos di baris ringkasan atas */
+    .kpi-label {{
+        display: flex; align-items: center; gap: 6px;
+        font-size: 0.74rem; font-weight: 700; color: {INK_SOFT};
+        text-transform: uppercase; letter-spacing: 0.03em;
+        white-space: nowrap;
+    }}
+    .kpi-value {{
+        font-family: {MONO_FONT};
+        font-size: 1.55rem; font-weight: 600; color: {INK};
+        margin-top: 8px; font-variant-numeric: tabular-nums;
+    }}
+    .kpi-value.red {{ color: {RED}; }}
+    .kpi-delta {{
+        font-size: 0.76rem; margin-top: 4px; color: {INK_SOFT};
     }}
 
     /* ---- sidebar ---- */
@@ -135,7 +188,7 @@ st.markdown(f"""
     .topbar-brand .mark {{
         width: 34px; height: 34px;
         background: {RED};
-        border-radius: 8px;
+        border-radius: 10px;
         display: flex; align-items: center; justify-content: center;
         color: white; font-weight: 800; font-size: 1rem;
     }}
@@ -162,7 +215,7 @@ st.markdown(f"""
     .side-brand .mark {{
         width: 38px; height: 38px;
         background: {RED};
-        border-radius: 9px;
+        border-radius: 11px;
         display: flex; align-items: center; justify-content: center;
         color: white; font-weight: 800; font-size: 1.1rem;
     }}
@@ -187,7 +240,7 @@ st.markdown(f"""
     div[data-testid="stMetric"] {{
         background-color: {CARD};
         border: 1px solid {LINE};
-        border-radius: 10px;
+        border-radius: 14px;
         padding: 16px 18px 14px 18px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }}
@@ -200,16 +253,18 @@ st.markdown(f"""
     }}
     div[data-testid="stMetricValue"] {{
         color: {INK};
-        font-weight: 800;
+        font-weight: 600;
         font-size: 1.6rem;
+        font-family: {MONO_FONT};
+        font-variant-numeric: tabular-nums;
     }}
 
     /* ---- generic card ---- */
     .card {{
         background-color: {CARD};
         border: 1px solid {LINE};
-        border-radius: 10px;
-        padding: 20px 22px;
+        border-radius: 16px;
+        padding: 22px 24px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         height: 100%;
     }}
@@ -273,11 +328,11 @@ st.markdown(f"""
         background-color: {RED};
         color: white;
         border: none;
-        border-radius: 6px;
+        border-radius: 10px;
         font-weight: 600;
     }}
     .stDownloadButton button:hover, .stButton button:hover {{
-        background-color: {RED_DARK};
+        background-color: {RED_HOVER};
         color: white;
     }}
 
@@ -519,9 +574,9 @@ def render_tabel_principal(summary, judul="Ringkasan per Principal", sub="Total 
         fg, bg = risk_colors[row["Risk"]]
         rc = st.columns([2.0, 1.5, 1.5, 1.1, 1.1, 1])
         rc[0].markdown(f"**{row['principal']}**")
-        rc[1].markdown(fmt_rupiah(row['Total Nominal']))
+        rc[1].markdown(f"<span class='mono-num'>{fmt_rupiah(row['Total Nominal'])}</span>", unsafe_allow_html=True)
         color_amt = RED_DARK if row["Nominal Belum Lunas"] > 0 else INK
-        rc[2].markdown(f"<span style='color:{color_amt};font-weight:700;'>{fmt_rupiah(row['Nominal Belum Lunas'])}</span>", unsafe_allow_html=True)
+        rc[2].markdown(f"<span class='mono-num' style='color:{color_amt};font-weight:700;'>{fmt_rupiah(row['Nominal Belum Lunas'])}</span>", unsafe_allow_html=True)
         rc[3].markdown(f"<span style='color:{GREEN};font-weight:700;'>{fmt_num(int(row['Jumlah Lunas']))}</span>", unsafe_allow_html=True)
         rc[4].markdown(f"<span style='color:{RED_DARK};font-weight:700;'>{fmt_num(int(row['Jumlah Belum Lunas']))}</span>", unsafe_allow_html=True)
         rc[5].markdown(f"<span class='badge' style='background:{bg};color:{fg};'>{row['Risk']}</span>", unsafe_allow_html=True)
@@ -562,12 +617,46 @@ st.markdown(f"""
 st.markdown(f'<div class="page-subtitle">{subjudul}</div>', unsafe_allow_html=True)
 
 # ── KPI cards (tampil di semua halaman) ──────────
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Invoice", fmt_num(len(df_f)))
-col2.metric("Lunas", fmt_num((df_f['status']=='LUNAS').sum()))
-col3.metric("Belum Lunas", fmt_num((df_f['status']=='BELUM LUNAS').sum()))
+# Nilai yang dihitung sama persis seperti sebelumnya -- hanya dipindah ke
+# variabel dulu supaya bisa dirender sebagai kartu custom (bukan st.metric).
+total_invoice_n = len(df_f)
+lunas_n = (df_f['status'] == 'LUNAS').sum()
+belum_lunas_n = (df_f['status'] == 'BELUM LUNAS').sum()
 total_belum_rp = df_f.loc[df_f["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
-col4.metric("Nominal Belum Lunas", fmt_rupiah_short(total_belum_rp), help=fmt_rupiah(total_belum_rp))
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(f"""
+        <div class="card">
+            <div class="kpi-label">{icon_svg("grid", INK_SOFT)} Total Invoice</div>
+            <div class="kpi-value">{fmt_num(total_invoice_n)}</div>
+            <div class="kpi-delta">Sesuai filter aktif</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown(f"""
+        <div class="card">
+            <div class="kpi-label">{icon_svg("check", GREEN)} Lunas</div>
+            <div class="kpi-value" style="color:{GREEN};">{fmt_num(lunas_n)}</div>
+            <div class="kpi-delta">Invoice sudah dibayar</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col3:
+    st.markdown(f"""
+        <div class="card">
+            <div class="kpi-label">{icon_svg("warn", RED_DARK)} Belum Lunas</div>
+            <div class="kpi-value" style="color:{RED_DARK};">{fmt_num(belum_lunas_n)}</div>
+            <div class="kpi-delta">Invoice belum dibayar</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col4:
+    st.markdown(f"""
+        <div class="card">
+            <div class="kpi-label">{icon_svg("coin", RED)} Nominal Belum Lunas</div>
+            <div class="kpi-value red">{fmt_rupiah_short(total_belum_rp)}</div>
+            <div class="kpi-delta mono-num">{fmt_rupiah(total_belum_rp)}</div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # =========================================================
 # HALAMAN: DASHBOARD -- ringkasan umum semua principal
@@ -576,6 +665,7 @@ if halaman == "Dashboard":
     render_overdue_notice(overdue, key_suffix="_dash")
     st.write("")
 
+    st.markdown(section_title("bars", "Tren &amp; Ringkasan Aging"), unsafe_allow_html=True)
     c1, c2 = st.columns([1.6, 1])
     with c1:
         st.markdown(f"""
@@ -611,9 +701,9 @@ if halaman == "Dashboard":
             belum["hari_lewat"] = (today - belum["tanggal_jatuh_tempo"]).dt.days
             buckets = [
                 ("Belum Jatuh Tempo", belum["hari_lewat"] < 0, INK_SOFT),
-                ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F3B4B9"),
-                ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E8828B"),
-                ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#D64B57"),
+                ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F0BFC4"),
+                ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E28D96"),
+                ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#CE5A66"),
                 ("90+ Hari", belum["hari_lewat"] > 90, RED),
             ]
             max_val = max(belum.loc[cond, "nominal_invoice"].sum() for _, cond, _ in buckets) or 1
@@ -624,7 +714,7 @@ if halaman == "Dashboard":
                     <div class="aging-row">
                         <div class="aging-label-row">
                             <span>{label}</span>
-                            <b>{fmt_rupiah(val)}</b>
+                            <b class="mono-num">{fmt_rupiah(val)}</b>
                         </div>
                         <div class="aging-bar-bg">
                             <div class="aging-bar-fill" style="width:{pct}%;background:{color};"></div>
@@ -636,15 +726,18 @@ if halaman == "Dashboard":
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.write("")
+    st.markdown(section_title("grid", "Ringkasan per Principal"), unsafe_allow_html=True)
     render_tabel_principal(hitung_summary_principal(df_f))
 
 # =========================================================
 # HALAMAN: PRINCIPAL -- fokus perbandingan & drill-down tiap principal
 # =========================================================
 elif halaman == "Principal":
+    st.markdown(section_title("grid", "Ringkasan per Principal"), unsafe_allow_html=True)
     render_tabel_principal(hitung_summary_principal(df_f))
     st.write("")
 
+    st.markdown(section_title("bars", "Detail per Principal"), unsafe_allow_html=True)
     st.markdown('<div class="card-title" style="margin-bottom:8px;">Lihat Detail 1 Principal</div>', unsafe_allow_html=True)
     daftar_principal = ["Semua Principal"] + sorted(df_f["principal"].dropna().unique().tolist())
     pilih_satu = st.selectbox("Pilih Principal", daftar_principal, label_visibility="collapsed")
@@ -688,6 +781,7 @@ elif halaman == "Pembayaran":
     render_overdue_notice(overdue, key_suffix="_bayar")
     st.write("")
 
+    st.markdown(section_title("bars", "Tren Pembayaran"), unsafe_allow_html=True)
     st.markdown(f"""
         <div class="card">
             <div class="card-title">Tren Pembayaran</div>
@@ -713,6 +807,8 @@ elif halaman == "Pembayaran":
     st.write("")
 
     # ── Status lunas vs belum lunas per sumber file ──
+    st.write("")
+    st.markdown(section_title("grid", "Ringkasan Sumber Data"), unsafe_allow_html=True)
     st.markdown(f"""
         <div class="card">
             <div class="card-title">Status per Sumber File</div>
@@ -738,8 +834,8 @@ elif halaman == "Pembayaran":
             rc[0].markdown(f"**{row['sumber_file']}**")
             rc[1].markdown(f"<span style='color:{GREEN};font-weight:700;'>{fmt_num(int(row['Lunas']))}</span>", unsafe_allow_html=True)
             rc[2].markdown(f"<span style='color:{RED_DARK};font-weight:700;'>{fmt_num(int(row['Belum Lunas']))}</span>", unsafe_allow_html=True)
-            rc[3].markdown(fmt_rupiah(row['Nominal Lunas']))
-            rc[4].markdown(fmt_rupiah(row['Nominal Belum Lunas']))
+            rc[3].markdown(f"<span class='mono-num'>{fmt_rupiah(row['Nominal Lunas'])}</span>", unsafe_allow_html=True)
+            rc[4].markdown(f"<span class='mono-num'>{fmt_rupiah(row['Nominal Belum Lunas'])}</span>", unsafe_allow_html=True)
     else:
         st.info("Tidak ada data.")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -747,6 +843,7 @@ elif halaman == "Pembayaran":
     st.write("")
 
     # ── Tabel detail transaksi ──
+    st.markdown(section_title("coin", "Detail Transaksi"), unsafe_allow_html=True)
     st.markdown(f"""
         <div class="card">
             <div class="card-title">Detail Transaksi</div>
