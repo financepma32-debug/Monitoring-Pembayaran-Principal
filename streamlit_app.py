@@ -916,44 +916,90 @@ elif halaman == "Outstanding":
     render_overdue_notice(overdue, key_suffix="_outstanding")
     st.write("")
 
-    st.markdown(section_title("bars", "Ringkasan Aging"), unsafe_allow_html=True)
-    st.markdown(f"""
-        <div class="card">
-            <div class="card-title">Ringkasan Aging</div>
-            <div class="card-subtitle">Sebaran saldo belum lunas berdasarkan umur</div>
-    """, unsafe_allow_html=True)
-    belum = df_belum.copy()
-    if not belum.empty:
-        belum["hari_lewat"] = (today - belum["tanggal_jatuh_tempo"]).dt.days
-        buckets = [
-            ("Belum Jatuh Tempo", belum["hari_lewat"] < 0, INK_SOFT),
-            ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F0BFC4"),
-            ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E28D96"),
-            ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#CE5A66"),
-            ("90+ Hari", belum["hari_lewat"] > 90, RED),
-        ]
-        max_val = max(belum.loc[cond, "nominal_invoice"].sum() for _, cond, _ in buckets) or 1
-        for label, cond, color in buckets:
-            val = belum.loc[cond, "nominal_invoice"].sum()
-            pct = max(3, (val / max_val) * 100)
-            st.markdown(f"""
-                <div class="aging-row">
-                    <div class="aging-label-row">
-                        <span>{label}</span>
-                        <b class="mono-num">{fmt_rupiah(val)}</b>
+    st.markdown(section_title("bars", "Ringkasan Aging &amp; Outstanding per Principal"), unsafe_allow_html=True)
+    ac1, ac2 = st.columns([1, 1.15])
+    with ac1:
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Ringkasan Aging</div>
+                <div class="card-subtitle">Sebaran saldo belum lunas berdasarkan umur</div>
+        """, unsafe_allow_html=True)
+        belum = df_belum.copy()
+        if not belum.empty:
+            belum["hari_lewat"] = (today - belum["tanggal_jatuh_tempo"]).dt.days
+            buckets = [
+                ("Belum Jatuh Tempo", belum["hari_lewat"] < 0, INK_SOFT),
+                ("1-30 Hari", (belum["hari_lewat"] >= 0) & (belum["hari_lewat"] <= 30), "#F0BFC4"),
+                ("31-60 Hari", (belum["hari_lewat"] > 30) & (belum["hari_lewat"] <= 60), "#E28D96"),
+                ("61-90 Hari", (belum["hari_lewat"] > 60) & (belum["hari_lewat"] <= 90), "#CE5A66"),
+                ("90+ Hari", belum["hari_lewat"] > 90, RED),
+            ]
+            max_val = max(belum.loc[cond, "nominal_invoice"].sum() for _, cond, _ in buckets) or 1
+            for label, cond, color in buckets:
+                val = belum.loc[cond, "nominal_invoice"].sum()
+                pct = max(3, (val / max_val) * 100)
+                st.markdown(f"""
+                    <div class="aging-row">
+                        <div class="aging-label-row">
+                            <span>{label}</span>
+                            <b class="mono-num">{fmt_rupiah(val)}</b>
+                        </div>
+                        <div class="aging-bar-bg">
+                            <div class="aging-bar-fill" style="width:{pct}%;background:{color};"></div>
+                        </div>
                     </div>
-                    <div class="aging-bar-bg">
-                        <div class="aging-bar-fill" style="width:{pct}%;background:{color};"></div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("Tidak ada invoice belum lunas.")
-    st.markdown("</div>", unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Tidak ada invoice belum lunas.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.write("")
-    st.markdown(section_title("grid", "Ringkasan Outstanding per Principal"), unsafe_allow_html=True)
-    render_tabel_outstanding(hitung_summary_principal(df_f))
+    with ac2:
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Outstanding per Principal</div>
+                <div class="card-subtitle">Proporsi nominal belum lunas -- warna = level risiko</div>
+        """, unsafe_allow_html=True)
+        summary_o = hitung_summary_principal(df_f)
+        summary_o_chart = summary_o[summary_o["Nominal Belum Lunas"] > 0]
+        if not summary_o_chart.empty:
+            risk_pie_colors = {"LOW": GREEN, "MEDIUM": AMBER, "HIGH": RED_DARK, "CRITICAL": RED}
+            hover_text = [fmt_rupiah(v) for v in summary_o_chart["Nominal Belum Lunas"]]
+            fig_pie = go.Figure(go.Pie(
+                labels=summary_o_chart["principal"],
+                values=summary_o_chart["Nominal Belum Lunas"],
+                customdata=hover_text,
+                hole=0.58,
+                sort=False,
+                marker=dict(
+                    colors=[risk_pie_colors[r] for r in summary_o_chart["Risk"]],
+                    line=dict(color=CARD, width=2),
+                ),
+                textinfo="label+percent",
+                textfont=dict(size=11, family="Inter", color=INK),
+                hovertemplate="<b>%{label}</b><br>%{customdata}<extra></extra>",
+            ))
+            fig_pie.update_layout(
+                showlegend=False,
+                height=300,
+                margin=dict(l=10, r=10, t=10, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter", color=INK),
+                annotations=[dict(
+                    text=f"<b>{fmt_rupiah_short(nominal_outstanding)}</b><br><span style='font-size:11px;color:{INK_SOFT}'>Total Outstanding</span>",
+                    x=0.5, y=0.5, showarrow=False, font=dict(size=15, color=INK),
+                )],
+            )
+            st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+            st.caption("Warna: <span style='color:{0};font-weight:700;'>LOW</span> · "
+                       "<span style='color:{1};font-weight:700;'>MEDIUM</span> · "
+                       "<span style='color:{2};font-weight:700;'>HIGH</span> · "
+                       "<span style='color:{3};font-weight:700;'>CRITICAL</span>"
+                       .format(GREEN, AMBER, RED_DARK, RED), unsafe_allow_html=True)
+        else:
+            st.info("Tidak ada invoice belum lunas.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
     st.write("")
 
     st.markdown(section_title("coin", "Detail Invoice Outstanding"), unsafe_allow_html=True)
