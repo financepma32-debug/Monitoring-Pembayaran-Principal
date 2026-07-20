@@ -313,6 +313,30 @@ st.markdown(f"""
         font-variant-numeric: tabular-nums;
     }}
 
+    /* ---- tabel invoice custom (Detail Invoice Outstanding) --
+       header rapi + baris hover, sesuai gaya tabel di mockup Stitch ---- */
+    .inv-th {{
+        padding: 12px 20px;
+        text-align: left;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: {INK_SOFT};
+        border-bottom: 1px solid {LINE};
+        white-space: nowrap;
+    }}
+    .inv-td {{
+        padding: 12px 20px;
+        font-size: 0.82rem;
+        color: {INK};
+        border-bottom: 1px solid {LINE};
+        white-space: nowrap;
+    }}
+    .inv-row:hover {{
+        background: {BG_SOFT};
+    }}
+
     /* ---- generic card ---- */
     .card {{
         background-color: {CARD};
@@ -411,34 +435,73 @@ st.markdown(f"""
        bukan st.radio lagi -- baris bulatan radio yang tidak bisa
        disembunyikan via CSS di beberapa versi Streamlit jadi hilang total
        karena memang tidak dipakai lagi, bukan disembunyikan) ---- */
-    .st-key-sidebar_nav {{
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+    /* ---- sidebar nav (sekarang st.button asli + ikon Material Symbols,
+       bukan st.radio lagi). Target langsung lewat key masing-masing tombol
+       (st-key-nav_...) -- lebih pasti kena daripada lewat container,
+       karena key per-widget selalu diekspos jadi class oleh Streamlit. ---- */
+    div[class*="st-key-nav_"] {{
         margin-bottom: 4px;
     }}
-    .st-key-sidebar_nav button {{
+    div[class*="st-key-nav_"] button,
+    div[class*="st-key-nav_"] button[data-testid*="stBaseButton"] {{
         justify-content: flex-start !important;
         gap: 10px;
         font-weight: 600;
         font-size: 0.9rem;
         border-radius: 8px !important;
         padding: 10px 12px !important;
+        width: 100%;
     }}
-    .st-key-sidebar_nav button[kind="secondary"] {{
+    div[class*="st-key-nav_"] button[kind="secondary"],
+    div[class*="st-key-nav_"] button[data-testid="stBaseButton-secondary"] {{
         background-color: transparent !important;
         border: none !important;
+        box-shadow: none !important;
         color: {INK} !important;
     }}
-    .st-key-sidebar_nav button[kind="secondary"]:hover {{
+    div[class*="st-key-nav_"] button[kind="secondary"]:hover,
+    div[class*="st-key-nav_"] button[data-testid="stBaseButton-secondary"]:hover {{
         background-color: {RED_SOFT} !important;
         color: {RED_DARK} !important;
     }}
-    .st-key-sidebar_nav button[kind="primary"] {{
+    div[class*="st-key-nav_"] button[kind="primary"],
+    div[class*="st-key-nav_"] button[data-testid="stBaseButton-primary"] {{
         background-color: {RED} !important;
         border: none !important;
         color: #FFFFFF !important;
         box-shadow: none !important;
+    }}
+
+    /* grup menu (expander) -- Monitoring Pembayaran Principal/Non Principal */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] {{
+        border: none !important;
+        box-shadow: none !important;
+        margin-bottom: 2px;
+    }}
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary {{
+        font-weight: 600;
+        font-size: 0.86rem;
+        color: {INK};
+        padding: 10px 12px;
+        border-radius: 8px;
+    }}
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {{
+        background-color: {RED_SOFT};
+        color: {RED_DARK};
+    }}
+    section[data-testid="stSidebar"] [data-testid="stExpander"] > div:last-child {{
+        padding-left: 14px;
+        border-left: 2px solid {LINE};
+        margin-left: 20px;
+    }}
+
+    /* garis pemisah <hr> di sidebar -- dipaksa penuh & rapi, sebelumnya
+       kelihatan seperti terpotong karena margin bawaan Streamlit tidak nol */
+    section[data-testid="stSidebar"] hr {{
+        width: 100% !important;
+        margin: 14px 0 !important;
+        border: none !important;
+        border-top: 1px solid {LINE} !important;
     }}
 
     /* ---- widget filter sidebar (multiselect & text input) --
@@ -511,36 +574,62 @@ st.markdown(f"""
 with st.sidebar:
     st.markdown(f"""
         <div class="side-brand">
-            {logo_html(38, '<div class="mark">MP</div>')}
+            {logo_html(38, '<div class="mark">FP</div>')}
             <div>
-                <div class="side-brand-title">Monitoring Pembayaran</div>
-                <div class="side-brand-sub">Principal</div>
+                <div class="side-brand-title" style="font-size:0.92rem;line-height:1.25;">Sistem Informasi<br>Finance PMA</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
     if "active_page" not in st.session_state:
-        st.session_state.active_page = "Dashboard"
+        st.session_state.active_page = "Home"
 
-    nav_items = [
-        ("Dashboard", ":material/dashboard:"),
-        ("Outstanding", ":material/pending_actions:"),
-        ("Lunas", ":material/check_circle:"),
+    def nav_button(page_id, label, mat_icon):
+        is_active = st.session_state.active_page == page_id
+        if st.button(
+            label, key=f"nav_{page_id}", icon=mat_icon,
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
+            st.session_state.active_page = page_id
+            st.rerun()
+
+    # -- Home (mandiri, ringkasan semua modul) --
+    nav_button("Home", "Home", ":material/home:")
+
+    # -- Grup: Monitoring Pembayaran Principal --
+    principal_subpages = [
+        ("Principal_Summary", "Summary", ":material/dashboard:"),
+        ("Principal_Outstanding", "Outstanding", ":material/pending_actions:"),
+        ("Principal_Lunas", "Lunas", ":material/check_circle:"),
     ]
-    with st.container(key="sidebar_nav"):
-        for page_key, mat_icon in nav_items:
-            is_active = st.session_state.active_page == page_key
-            if st.button(
-                page_key, key=f"nav_{page_key}", icon=mat_icon,
-                use_container_width=True,
-                type="primary" if is_active else "secondary",
-            ):
-                st.session_state.active_page = page_key
-                st.rerun()
+    principal_aktif = st.session_state.active_page.startswith("Principal_")
+    with st.expander("Monitoring Pembayaran Principal", expanded=principal_aktif, icon=":material/folder:"):
+        for page_id, label, mat_icon in principal_subpages:
+            nav_button(page_id, label, mat_icon)
+
+    # -- Grup: Monitoring Pembayaran Non Principal --
+    # Catatan: belum ada sumber data untuk modul ini -- halamannya jadi
+    # placeholder dulu ("belum terhubung ke data") sampai tabel/kolomnya
+    # dikonfirmasi, supaya tidak mengarang angka.
+    nonprincipal_subpages = [
+        ("NonPrincipal_Summary", "Summary", ":material/dashboard:"),
+        ("NonPrincipal_Outstanding", "Outstanding", ":material/pending_actions:"),
+        ("NonPrincipal_Lunas", "Lunas", ":material/check_circle:"),
+    ]
+    nonprincipal_aktif = st.session_state.active_page.startswith("NonPrincipal_")
+    with st.expander("Monitoring Pembayaran Non Principal", expanded=nonprincipal_aktif, icon=":material/folder:"):
+        for page_id, label, mat_icon in nonprincipal_subpages:
+            nav_button(page_id, label, mat_icon)
+
+    # -- Monitoring Sewa Gudang (mandiri, placeholder juga) --
+    nav_button("SewaGudang", "Monitoring Sewa Gudang", ":material/warehouse:")
+
     halaman = st.session_state.active_page
 
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown('<div class="card-title" style="font-size:1rem;margin-bottom:12px;">Filter</div>', unsafe_allow_html=True)
+    if halaman.startswith("Principal_"):
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('<div class="card-title" style="font-size:1rem;margin-bottom:12px;">Filter</div>', unsafe_allow_html=True)
 
 # =========================================================
 # Koneksi Supabase (pakai ANON key -- aman untuk publik, read-only)
@@ -615,13 +704,24 @@ def fmt_rupiah_short(n):
     return f"{sign}Rp {val:.1f}{suf}"
 
 # ── Top bar ─────────────────────────────────────
+modul_label = {
+    "Home": ("Home", ""),
+    "Principal_Summary": ("Monitoring Pembayaran Principal", "SIMBA &middot; NSI &middot; MEIJI"),
+    "Principal_Outstanding": ("Monitoring Pembayaran Principal", "SIMBA &middot; NSI &middot; MEIJI"),
+    "Principal_Lunas": ("Monitoring Pembayaran Principal", "SIMBA &middot; NSI &middot; MEIJI"),
+    "NonPrincipal_Summary": ("Monitoring Pembayaran Non Principal", "Belum terhubung data"),
+    "NonPrincipal_Outstanding": ("Monitoring Pembayaran Non Principal", "Belum terhubung data"),
+    "NonPrincipal_Lunas": ("Monitoring Pembayaran Non Principal", "Belum terhubung data"),
+    "SewaGudang": ("Monitoring Sewa Gudang", "Belum terhubung data"),
+}
+modul_nama, modul_sub = modul_label.get(halaman, ("", ""))
 st.markdown(f"""
     <div class="topbar">
         <div class="topbar-brand">
             {logo_html(34, '<div class="mark">₨</div>')}
-            <div class="topbar-title">Monitoring Pembayaran Principal</div>
+            <div class="topbar-title">Sistem Informasi Finance PMA</div>
         </div>
-        <div class="topbar-user"><b>Dashboard</b><br>SIMBA &middot; NSI &middot; MEIJI</div>
+        <div class="topbar-user"><b>{modul_nama}</b><br>{modul_sub}</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -642,15 +742,22 @@ def reset_filters():
 
 with st.sidebar:
     principals = sorted(df["principal"].dropna().unique().tolist())
-    cari_invoice = st.text_input(
-        "Cari No Invoice", key="cari_invoice_input", placeholder="Ketik...",
-    )
-    pilih_principal = st.multiselect(
-        "Principal", principals, default=[], key="principal_multiselect",
-        placeholder="Choose options",
-    )
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.button("Reset Filter", use_container_width=True, type="secondary", on_click=reset_filters)
+    if halaman.startswith("Principal_"):
+        cari_invoice = st.text_input(
+            "Cari No Invoice", key="cari_invoice_input", placeholder="Ketik...",
+        )
+        pilih_principal = st.multiselect(
+            "Principal", principals, default=[], key="principal_multiselect",
+            placeholder="Choose options",
+        )
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.button("Reset Filter", use_container_width=True, type="secondary", on_click=reset_filters)
+    else:
+        # halaman lain (Home/Non Principal/Sewa Gudang) tidak menampilkan
+        # filter Principal -- tapi nilainya tetap dipertahankan dari
+        # session_state supaya tidak hilang saat balik lagi ke halaman Principal
+        cari_invoice = st.session_state.get("cari_invoice_input", "")
+        pilih_principal = st.session_state.get("principal_multiselect", [])
 
 # Kotak kosong (belum pilih apapun) = tampilkan semua principal -- bukan
 # berarti tidak ada yang cocok. Ini yang bikin kotak filter bersih (placeholder
@@ -815,9 +922,14 @@ def render_overdue_notice(data_overdue, key_suffix=""):
 
 # ── Judul per halaman ────────────────────────────
 judul_halaman = {
-    "Dashboard": ("grid", "Payment Monitoring Overview", "Status pembayaran invoice principal secara real-time."),
-    "Outstanding": ("warn", "Outstanding Invoices", "Invoice yang masih belum lunas -- saldo, jatuh tempo, dan risiko keterlambatan per principal."),
-    "Lunas": ("check", "Invoice Lunas", "Invoice yang sudah dibayar -- tren pembayaran dan rekap per principal."),
+    "Home": ("grid", "Home", "Ringkasan seluruh modul monitoring finance PMA."),
+    "Principal_Summary": ("grid", "Payment Monitoring Overview", "Status pembayaran invoice principal secara real-time."),
+    "Principal_Outstanding": ("warn", "Outstanding Invoices", "Invoice yang masih belum lunas -- saldo, jatuh tempo, dan risiko keterlambatan per principal."),
+    "Principal_Lunas": ("check", "Invoice Lunas", "Invoice yang sudah dibayar -- tren pembayaran dan rekap per principal."),
+    "NonPrincipal_Summary": ("grid", "Payment Monitoring Overview -- Non Principal", "Modul ini belum terhubung ke sumber data."),
+    "NonPrincipal_Outstanding": ("warn", "Outstanding Invoices -- Non Principal", "Modul ini belum terhubung ke sumber data."),
+    "NonPrincipal_Lunas": ("check", "Invoice Lunas -- Non Principal", "Modul ini belum terhubung ke sumber data."),
+    "SewaGudang": ("coin", "Monitoring Sewa Gudang", "Modul ini belum terhubung ke sumber data."),
 }
 ikon_halaman, judul, subjudul = judul_halaman[halaman]
 st.markdown(f"""
@@ -831,9 +943,80 @@ st.markdown(f"""
 st.markdown(f'<div class="page-subtitle">{subjudul}</div>', unsafe_allow_html=True)
 
 # =========================================================
+# HALAMAN: HOME -- ringkasan seluruh modul (yang datanya sudah ada)
+# =========================================================
+if halaman == "Home":
+    # Angka di sini dari df penuh (tidak ikut filter sidebar Principal),
+    # karena Home mewakili semua modul, bukan cuma satu -- reuse pola
+    # agregasi yang sama persis dengan yang dipakai di halaman Principal.
+    total_invoice_all = len(df)
+    lunas_all_n = (df["status"] == "LUNAS").sum()
+    belum_all_n = (df["status"] == "BELUM LUNAS").sum()
+    nominal_belum_all_home = df.loc[df["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
+
+    st.markdown(section_title("grid", "Ringkasan Semua Modul"), unsafe_allow_html=True)
+    st.markdown(f"""
+        <div class="card">
+            <div class="card-stripe" style="background:{RED};"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    {icon_badge("grid", "#FFFFFF", RED, size=32, icon_size=16, radius=9)}
+                    <div>
+                        <div class="card-title" style="margin-bottom:0;">Monitoring Pembayaran Principal</div>
+                        <div class="card-subtitle">SIMBA &middot; NSI &middot; MEIJI</div>
+                    </div>
+                </div>
+                <span class="badge" style="background:{GREEN_SOFT};color:{GREEN};">AKTIF</span>
+            </div>
+            <div style="display:flex;gap:36px;flex-wrap:wrap;">
+                <div>
+                    <div class="kpi-label">{icon_svg("grid", INK_SOFT)} Total Invoice</div>
+                    <div class="kpi-value" style="font-size:1.3rem;">{fmt_num(total_invoice_all)}</div>
+                </div>
+                <div>
+                    <div class="kpi-label">{icon_svg("check", GREEN)} Lunas</div>
+                    <div class="kpi-value" style="font-size:1.3rem;color:{GREEN};">{fmt_num(lunas_all_n)}</div>
+                </div>
+                <div>
+                    <div class="kpi-label">{icon_svg("warn", RED_DARK)} Belum Lunas</div>
+                    <div class="kpi-value" style="font-size:1.3rem;color:{RED_DARK};">{fmt_num(belum_all_n)}</div>
+                </div>
+                <div>
+                    <div class="kpi-label">{icon_svg("coin", RED)} Nominal Outstanding</div>
+                    <div class="kpi-value red" style="font-size:1.3rem;">{fmt_rupiah_short(nominal_belum_all_home)}</div>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    st.caption("Buka menu **Monitoring Pembayaran Principal** di sidebar untuk detail Summary / Outstanding / Lunas.")
+
+    st.write("")
+    hc1, hc2 = st.columns(2)
+    with hc1:
+        st.markdown(f"""
+            <div class="card" style="opacity:0.55;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    {icon_badge("grid", INK_SOFT, LINE, size=32, icon_size=16, radius=9)}
+                    <div class="card-title" style="margin-bottom:0;">Monitoring Pembayaran Non Principal</div>
+                </div>
+                <div class="card-subtitle">Modul belum terhubung ke sumber data.</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with hc2:
+        st.markdown(f"""
+            <div class="card" style="opacity:0.55;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    {icon_badge("coin", INK_SOFT, LINE, size=32, icon_size=16, radius=9)}
+                    <div class="card-title" style="margin-bottom:0;">Monitoring Sewa Gudang</div>
+                </div>
+                <div class="card-subtitle">Modul belum terhubung ke sumber data.</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+# =========================================================
 # HALAMAN: DASHBOARD -- ringkasan umum semua principal
 # =========================================================
-if halaman == "Dashboard":
+elif halaman == "Principal_Summary":
     # KPI ringkasan umum -- gabungan lunas & belum lunas, sama seperti
     # sebelumnya, cuma sekarang khusus di halaman ini saja.
     total_invoice_n = len(df_f)
@@ -902,18 +1085,21 @@ if halaman == "Dashboard":
                 marker_color=[GREEN, RED],
                 text=[fmt_rupiah_short(nominal_lunas_all), fmt_rupiah_short(nominal_belum_all)],
                 textposition="outside",
+                cliponaxis=False,
                 textfont=dict(family="Inter", size=12, color=INK),
                 hovertext=[fmt_rupiah(nominal_lunas_all), fmt_rupiah(nominal_belum_all)],
                 hoverinfo="text",
             ))
+            max_bar = max(nominal_lunas_all, nominal_belum_all) or 1
             fig_komposisi.update_layout(
                 height=220,
-                margin=dict(l=10, r=10, t=10, b=10),
+                margin=dict(l=10, r=70, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(family="Inter", color=INK),
                 showlegend=False,
-                xaxis=dict(showgrid=False, zeroline=True, zerolinecolor=LINE, tickfont=dict(size=10, color=INK_SOFT)),
+                xaxis=dict(showgrid=False, zeroline=True, zerolinecolor=LINE,
+                           tickfont=dict(size=10, color=INK_SOFT), range=[0, max_bar * 1.28]),
                 yaxis=dict(tickfont=dict(size=12, color=INK, family="Inter")),
             )
             st.plotly_chart(fig_komposisi, use_container_width=True, config={"displayModeBar": False})
@@ -968,7 +1154,7 @@ if halaman == "Dashboard":
 # =========================================================
 # HALAMAN: OUTSTANDING -- murni invoice belum lunas, tanpa info lunas
 # =========================================================
-elif halaman == "Outstanding":
+elif halaman == "Principal_Outstanding":
     df_belum = df_f[df_f["status"] == "BELUM LUNAS"]
 
     total_outstanding_n = len(df_belum)
@@ -1130,16 +1316,53 @@ elif halaman == "Outstanding":
                         else df_belum[df_belum["principal"] == pilih_principal_o])
 
     st.write("")
+    df_belum_sorted = df_belum_tampil[kolom_tampil].sort_values("tanggal_jatuh_tempo", ascending=True)
+    rows_html = ""
+    for _, r in df_belum_sorted.iterrows():
+        is_od = pd.notna(r["tanggal_jatuh_tempo"]) and r["tanggal_jatuh_tempo"] < today
+        tgl = r["tanggal_jatuh_tempo"].strftime("%d %b %Y") if pd.notna(r["tanggal_jatuh_tempo"]) else "-"
+        badge = (
+            f'<span style="padding:3px 9px;background:{RED};color:#FFFFFF;font-size:10px;'
+            f'border-radius:4px;font-weight:700;text-transform:uppercase;">Lewat Tempo</span>'
+            if is_od else
+            f'<span style="padding:3px 9px;background:{LINE};color:{INK_SOFT};font-size:10px;'
+            f'border-radius:4px;font-weight:700;text-transform:uppercase;">Belum Bayar</span>'
+        )
+        rows_html += f"""
+            <tr class="inv-row">
+                <td class="inv-td" style="font-weight:700;">{r['principal']}</td>
+                <td class="inv-td mono-num" style="font-size:0.78rem;">{r['no_invoice']}</td>
+                <td class="inv-td mono-num" style="text-align:right;font-weight:700;">{fmt_rupiah(r['nominal_invoice'])}</td>
+                <td class="inv-td" style="color:{RED if is_od else INK_SOFT};font-weight:600;">{tgl}{' (Overdue)' if is_od else ''}</td>
+                <td class="inv-td">{badge}</td>
+            </tr>"""
     st.markdown(f"""
-        <div class="card">
-            <div class="card-title">Daftar Invoice Belum Lunas</div>
-            <div class="card-subtitle">Rincian invoice outstanding sesuai filter aktif -- tanpa data invoice lunas</div>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:20px 24px;border-bottom:1px solid {LINE};">
+                <div class="card-title" style="margin-bottom:2px;">Daftar Invoice Belum Lunas</div>
+                <div class="card-subtitle">Rincian invoice outstanding sesuai filter aktif -- tanpa data invoice lunas</div>
+            </div>
+            <div style="overflow-x:auto;max-height:520px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:{BG_SOFT};position:sticky;top:0;">
+                            <th class="inv-th">Principal</th>
+                            <th class="inv-th">No. Invoice</th>
+                            <th class="inv-th" style="text-align:right;">Nominal</th>
+                            <th class="inv-th">Jatuh Tempo</th>
+                            <th class="inv-th">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>{rows_html}</tbody>
+                </table>
+            </div>
+            <div style="padding:12px 24px;background:{BG_SOFT};border-top:1px solid {LINE};
+                        font-size:0.78rem;color:{INK_SOFT};">
+                Menampilkan {fmt_num(len(df_belum_sorted))} invoice
+            </div>
+        </div>
     """, unsafe_allow_html=True)
-    st.dataframe(
-        df_belum_tampil[kolom_tampil].sort_values("tanggal_jatuh_tempo", ascending=True),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.write("")
     st.download_button(
         "↓  Unduh Daftar Outstanding (CSV)",
         df_belum_tampil[kolom_tampil].to_csv(index=False, sep=";").encode("utf-8-sig"),
@@ -1147,12 +1370,11 @@ elif halaman == "Outstanding":
         mime="text/csv",
         key="download_outstanding_detail",
     )
-    st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
 # HALAMAN: LUNAS -- murni invoice yang sudah dibayar, tanpa info outstanding
 # =========================================================
-elif halaman == "Lunas":
+elif halaman == "Principal_Lunas":
     df_lunas_page = df_f[df_f["status"] == "LUNAS"]
 
     total_lunas_n = len(df_lunas_page)
@@ -1235,6 +1457,19 @@ elif halaman == "Lunas":
         df_lunas_tampil[kolom_tampil].sort_values("tanggal_bayar", ascending=False),
         use_container_width=True,
         hide_index=True,
+        height=460,
+        column_config={
+            "principal": st.column_config.TextColumn("Principal"),
+            "no_invoice": st.column_config.TextColumn("No. Invoice"),
+            "no_payment_advice": st.column_config.TextColumn("No. Payment Advice"),
+            "nominal_invoice": st.column_config.NumberColumn("Nominal (Rp)", format="%d"),
+            "no_miro": st.column_config.TextColumn("No. MIRO"),
+            "tanggal_jatuh_tempo": st.column_config.DateColumn("Jatuh Tempo", format="DD MMM YYYY"),
+            "tanggal_bayar": st.column_config.DateColumn("Tgl Bayar", format="DD MMM YYYY"),
+            "status": st.column_config.TextColumn("Status"),
+            "sumber_file": st.column_config.TextColumn("Sumber File"),
+            "sumber_sheet": st.column_config.TextColumn("Sumber Sheet"),
+        },
     )
     st.download_button(
         "↓  Unduh Daftar Lunas (CSV)",
@@ -1244,6 +1479,26 @@ elif halaman == "Lunas":
         key="download_lunas_detail",
     )
     st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# HALAMAN: NON PRINCIPAL & SEWA GUDANG -- placeholder, belum ada
+# sumber data. Sengaja tidak diisi angka karangan -- begini dulu
+# sampai tabel/kolom Supabase-nya dikonfirmasi.
+# =========================================================
+elif halaman.startswith("NonPrincipal_") or halaman == "SewaGudang":
+    st.markdown(f"""
+        <div class="card" style="text-align:center;padding:56px 24px;">
+            {icon_badge("warn", INK_SOFT, LINE, size=48, icon_size=22, radius=14)}
+            <div style="font-weight:700;font-size:1.05rem;color:{INK};margin-top:16px;">
+                Modul ini belum terhubung ke sumber data
+            </div>
+            <div style="font-size:0.85rem;color:{INK_SOFT};margin-top:6px;max-width:480px;margin-left:auto;margin-right:auto;">
+                Halaman ini baru kerangka navigasi. Begitu tabel/kolom Supabase untuk modul ini
+                dikonfirmasi, halaman ini akan diisi dengan KPI, tabel, dan grafik yang sama
+                lengkapnya dengan modul Monitoring Pembayaran Principal.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 st.markdown(
     '<div class="footer-note">Data otomatis dari Supabase &middot; jalankan upload_to_supabase.py '
