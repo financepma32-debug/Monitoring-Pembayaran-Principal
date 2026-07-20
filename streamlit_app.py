@@ -862,6 +862,73 @@ if halaman == "Dashboard":
     render_overdue_notice(overdue, key_suffix="_dash")
     st.write("")
 
+    st.markdown(section_title("bars", "Komposisi &amp; Principal Teratas"), unsafe_allow_html=True)
+    dc1, dc2 = st.columns([1, 1.15])
+    with dc1:
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Komposisi Status</div>
+                <div class="card-subtitle">Proporsi nominal lunas vs belum lunas</div>
+        """, unsafe_allow_html=True)
+        nominal_lunas_all = df_f.loc[df_f["status"] == "LUNAS", "nominal_invoice"].sum()
+        nominal_belum_all = df_f.loc[df_f["status"] == "BELUM LUNAS", "nominal_invoice"].sum()
+        total_nominal_all = nominal_lunas_all + nominal_belum_all
+        if total_nominal_all > 0:
+            fig_komposisi = go.Figure(go.Pie(
+                labels=["Lunas", "Belum Lunas"],
+                values=[nominal_lunas_all, nominal_belum_all],
+                customdata=[fmt_rupiah(nominal_lunas_all), fmt_rupiah(nominal_belum_all)],
+                hole=0.58,
+                sort=False,
+                marker=dict(colors=[GREEN, RED], line=dict(color=CARD, width=2)),
+                textinfo="label+percent",
+                textfont=dict(size=12, family="Inter", color=INK),
+                hovertemplate="<b>%{label}</b><br>%{customdata}<extra></extra>",
+            ))
+            fig_komposisi.update_layout(
+                showlegend=False,
+                height=260,
+                margin=dict(l=10, r=10, t=10, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter", color=INK),
+                annotations=[dict(
+                    text=f"<b>{fmt_rupiah_short(total_nominal_all)}</b><br><span style='font-size:11px;color:{INK_SOFT}'>Total Nominal</span>",
+                    x=0.5, y=0.5, showarrow=False, font=dict(size=14, color=INK),
+                )],
+            )
+            st.plotly_chart(fig_komposisi, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.info("Tidak ada data.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with dc2:
+        st.markdown(f"""
+            <div class="card">
+                <div class="card-title">Top 5 Principal -- Belum Lunas Terbesar</div>
+                <div class="card-subtitle">Nominal outstanding tertinggi sesuai filter aktif</div>
+        """, unsafe_allow_html=True)
+        top5_principal = hitung_summary_principal(df_f).head(5)
+        if not top5_principal.empty and top5_principal["Nominal Belum Lunas"].sum() > 0:
+            max_top = top5_principal["Nominal Belum Lunas"].max() or 1
+            for _, row in top5_principal.iterrows():
+                pct = max(3, (row["Nominal Belum Lunas"] / max_top) * 100)
+                st.markdown(f"""
+                    <div class="aging-row">
+                        <div class="aging-label-row">
+                            <span>{row['principal']}</span>
+                            <b class="mono-num">{fmt_rupiah(row['Nominal Belum Lunas'])}</b>
+                        </div>
+                        <div class="aging-bar-bg">
+                            <div class="aging-bar-fill" style="width:{pct}%;background:{RED};"></div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Tidak ada invoice belum lunas.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.write("")
     st.markdown(section_title("grid", "Ringkasan per Principal"), unsafe_allow_html=True)
     render_tabel_principal(hitung_summary_principal(df_f))
     st.caption("Rincian khusus invoice outstanding ada di halaman **Outstanding**, "
@@ -957,12 +1024,17 @@ elif halaman == "Outstanding":
         st.markdown(f"""
             <div class="card">
                 <div class="card-title">Outstanding per Principal</div>
-                <div class="card-subtitle">Proporsi nominal belum lunas -- warna = level risiko</div>
+                <div class="card-subtitle">Proporsi nominal belum lunas per principal</div>
         """, unsafe_allow_html=True)
         summary_o = hitung_summary_principal(df_f)
         summary_o_chart = summary_o[summary_o["Nominal Belum Lunas"] > 0]
         if not summary_o_chart.empty:
-            risk_pie_colors = {"LOW": GREEN, "MEDIUM": AMBER, "HIGH": RED_DARK, "CRITICAL": RED}
+            # tiap principal dapat warna sendiri (bukan warna per level risiko --
+            # kalau semua principal kebetulan level risikonya sama, chart jadi
+            # satu warna doang dan nggak kebaca). Risiko tetap ditampilkan,
+            # dipindah ke legend badge di bawah chart.
+            palet_principal = [RED, RED_HOVER, RED_DARK, "#E8929B", "#701019", "#F0BFC4", "#5C1019", "#C96570"]
+            warna_slice = [palet_principal[i % len(palet_principal)] for i in range(len(summary_o_chart))]
             hover_text = [fmt_rupiah(v) for v in summary_o_chart["Nominal Belum Lunas"]]
             fig_pie = go.Figure(go.Pie(
                 labels=summary_o_chart["principal"],
@@ -970,17 +1042,14 @@ elif halaman == "Outstanding":
                 customdata=hover_text,
                 hole=0.58,
                 sort=False,
-                marker=dict(
-                    colors=[risk_pie_colors[r] for r in summary_o_chart["Risk"]],
-                    line=dict(color=CARD, width=2),
-                ),
+                marker=dict(colors=warna_slice, line=dict(color=CARD, width=2)),
                 textinfo="label+percent",
                 textfont=dict(size=11, family="Inter", color=INK),
                 hovertemplate="<b>%{label}</b><br>%{customdata}<extra></extra>",
             ))
             fig_pie.update_layout(
                 showlegend=False,
-                height=300,
+                height=260,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
@@ -991,11 +1060,20 @@ elif halaman == "Outstanding":
                 )],
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
-            st.caption("Warna: <span style='color:{0};font-weight:700;'>LOW</span> · "
-                       "<span style='color:{1};font-weight:700;'>MEDIUM</span> · "
-                       "<span style='color:{2};font-weight:700;'>HIGH</span> · "
-                       "<span style='color:{3};font-weight:700;'>CRITICAL</span>"
-                       .format(GREEN, AMBER, RED_DARK, RED), unsafe_allow_html=True)
+
+            # legend: warna slice + nama principal + badge risiko per baris
+            for i, (_, row) in enumerate(summary_o_chart.iterrows()):
+                dot = warna_slice[i]
+                fg, bg = risk_colors[row["Risk"]]
+                st.markdown(f"""
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 2px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="width:10px;height:10px;border-radius:50%;background:{dot};display:inline-block;flex-shrink:0;"></span>
+                            <span style="font-size:0.82rem;font-weight:600;color:{INK};">{row['principal']}</span>
+                        </div>
+                        <span class="badge" style="background:{bg};color:{fg};font-size:0.66rem;">{row['Risk']}</span>
+                    </div>
+                """, unsafe_allow_html=True)
         else:
             st.info("Tidak ada invoice belum lunas.")
         st.markdown("</div>", unsafe_allow_html=True)
