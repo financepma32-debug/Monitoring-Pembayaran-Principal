@@ -356,17 +356,25 @@ st.markdown(f"""
         border-radius: 8px;
         font-weight: 600;
         font-size: 0.9rem;
-        color: {INK_SOFT};
+        color: {INK} !important;
+        opacity: 1 !important;
         cursor: pointer;
-        transition: background 0.12s ease;
+        transition: background 0.12s ease, color 0.12s ease;
+    }}
+    /* paksa semua elemen di dalam label (termasuk <p> teks) ikut warna
+       label -- ini kunci perbaikan "menu blur": tema gelap bawaan Streamlit
+       suka menimpa warna/opacity elemen anak secara langsung. */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label * {{
+        color: inherit !important;
+        opacity: 1 !important;
     }}
     section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
         background: {RED_SOFT};
-        color: {RED_DARK};
+        color: {RED_DARK} !important;
     }}
     section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         background: {RED};
-        color: white;
+        color: #FFFFFF !important;
     }}
     section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {{
         display: none;
@@ -374,6 +382,39 @@ st.markdown(f"""
     section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{
         font-size: 0.9rem;
         font-weight: 600;
+        margin: 0;
+    }}
+
+    /* ---- widget filter sidebar (multiselect & text input) --
+       dipaksa terang, supaya tidak ikut dark-mode browser/OS pengunjung.
+       Ini perbaikan untuk kotak MEIJI/NSI/SIMBA & "Cari Invoice" yang
+       kelihatan hitam. ---- */
+    section[data-testid="stSidebar"] label {{
+        color: {INK_SOFT} !important;
+    }}
+    section[data-testid="stSidebar"] [data-baseweb="select"] > div,
+    section[data-testid="stSidebar"] .stTextInput input {{
+        background-color: {CARD} !important;
+        border: 1px solid {LINE} !important;
+        color: {INK} !important;
+        border-radius: 8px !important;
+    }}
+    section[data-testid="stSidebar"] [data-baseweb="tag"] {{
+        background-color: {RED} !important;
+        border-radius: 999px !important;
+    }}
+    section[data-testid="stSidebar"] [data-baseweb="tag"] span {{
+        color: #FFFFFF !important;
+    }}
+    /* menu dropdown multiselect kadang dirender di luar sidebar (portal ke
+       body) -- selector di bawah ini tidak dibatasi ke sidebar supaya tetap
+       kena. */
+    div[data-baseweb="popover"], ul[data-baseweb="menu"], li[data-baseweb="menu-item"] {{
+        background-color: {CARD} !important;
+        color: {INK} !important;
+    }}
+    li[data-baseweb="menu-item"]:hover {{
+        background-color: {RED_SOFT} !important;
     }}
 </style>
 """, unsafe_allow_html=True)
