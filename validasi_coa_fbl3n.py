@@ -38,10 +38,10 @@ _user_candidates = [
     os.path.join(BASE_DIR, "master user.xlsx"),
     os.path.join(os.path.dirname(BASE_DIR), "master_user.xlsx"),
     os.path.join(os.path.dirname(BASE_DIR), "master user.xlsx"),
-    r"D:\PROJECT FAD\KK ACC\master_user.xlsx",
-    r"D:\PROJECT FAD\KK ACC\master user.xlsx",
-    r"D:\PROJECT FAD\master_user.xlsx",
-    r"D:\PROJECT FAD\master user.xlsx",
+    r"\\10.1.201.185\data\PROJECT-FAD\1. KK REVIEW JURNAL\master_user.xlsx",
+    r"\\10.1.201.185\data\PROJECT-FAD\1. KK REVIEW JURNAL\master user.xlsx",
+    r"\\10.1.201.185\data\PROJECT-FAD\1. KK REVIEW JURNAL\master_user.xlsx",
+    r"\\10.1.201.185\data\PROJECT-FAD\1. KK REVIEW JURNAL\master user.xlsx",
 ]
 INPUT_USER = next((p for p in _user_candidates if os.path.exists(p)),
                   os.path.join(BASE_DIR, "master_user.xlsx"))
@@ -59,7 +59,7 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, f"FBL3N_Validated_{_TS}.xlsx")
 #  Ganti 2 baris DIVISI_TUJUAN/FOLDER_TUJUAN ini kalau salinan script
 #  dipakai di folder kerja/divisi yang lain.
 # ==============================
-ROOT_PROJECT_FAD = r"D:\PROJECT FAD"
+ROOT_PROJECT_FAD = r"\\10.1.201.185\data\PROJECT-FAD"
 DIVISI_TUJUAN    = "ACCOUNTING"
 FOLDER_TUJUAN    = "1. KK REVIEW JURNAL"
 
